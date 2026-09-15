@@ -10,4 +10,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Munchify.BLL\Munchify.BLL.csproj" />
+    <ProjectReference Include="..\Munchify.DAL\Munchify.DAL.csproj" />
+  </ItemGroup>
+
 </Project>

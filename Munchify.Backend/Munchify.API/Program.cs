@@ -1,4 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using Munchify.DAL.Data;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<MunchifyDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 
