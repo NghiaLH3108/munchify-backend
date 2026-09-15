@@ -1,4 +1,4 @@
-namespace Munchify.Api
+namespace Munchify.API
 {
     public class WeatherForecast
     {

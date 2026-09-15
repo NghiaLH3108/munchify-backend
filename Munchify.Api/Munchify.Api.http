@@ -1,6 +1,0 @@
-@Munchify.Api_HostAddress = http://localhost:5189
-
-GET {{Munchify.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
