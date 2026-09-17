@@ -211,6 +211,22 @@ The database consists of **15 interconnected tables** configured with strict ref
 - **F-07.2 (Top-Selling Products):** Top performing single items and combos by revenue and volume.
 - **F-07.3 (Low-Stock Alerting):** Query products where `StockQuantity <= MinStockLevel`.
 
+### Module 8: AI Demand Forecasting & Low-Stock Early Warning
+* **F-08.1 (Run-Rate Calculation & Days Remaining):**
+* Endpoint: `GET /api/inventory/forecasting`
+* Algorithm: Analyzes sales history from the `OrderDetails` table and stock fluctuations from `StockMovements` (`MovementType` in `['SALE', 'COMBO_SALE']`) over the last 14–30 days to calculate the average daily consumption rate ($V_{avg}$). 
+* Formula for estimating remaining inventory days:
+$$\text{DaysRemaining} = \frac{\text{Products.StockQuantity}}{V_{avg}}$$
+* **F-08.2 (Stockout Risk Alerting):**
+* Automatically flags stockout risks (`CRITICAL` / `WARNING`) when:
+$$\text{DaysRemaining} \le \text{LeadTime}_{\text{supplier}} \quad (\text{Default: } 3 \text{ days}) \quad \text{or} \quad \text{StockQuantity} \le \text{MinStockLevel}$$
+* **F-08.3 (Smart Purchase Quantity Recommendation):**
+* Calculates the recommended import quantity from suppliers based on a buffer cycle ($\text{BufferDays}$, default: 7 days):
+$$\text{SuggestedImportQty} = \max\left(0, \lceil V_{avg} \times \text{BufferDays} + \text{MinStockLevel} - \text{StockQuantity} \rceil\right)$$
+* **F-08.4 (One-Click Draft Import Generation):**
+* Endpoint: `POST /api/stock-imports/generate-from-forecast`
+* Automatically generates draft stock import records (`StockImports` with `Status = 'DRAFT'`), grouped by `SupplierId` and including a list of `StockImportDetails` based on the recommended quantities, eliminating the need for manual data entry by staff.
+
 ---
 
 ## 6. Business Rules & Server-Side Constraints
