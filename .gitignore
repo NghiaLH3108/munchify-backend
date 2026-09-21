@@ -399,3 +399,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Local development guides & documentation (Ignored from Git)
+docs_private/
+local_docs/
+dev_docs/
