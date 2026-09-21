@@ -1,4 +1,4 @@
-# AI Agent & Developer Guidelines: Munchify Backend API
+﻿# AI Agent & Developer Guidelines: Munchify Backend API
 
 ## 1. Document Purpose & Operational Mandate
 
@@ -40,40 +40,50 @@ Munchify.Backend/
 │   │   ├── PaymentsController.cs
 │   │   ├── SuppliersController.cs
 │   │   ├── StockImportsController.cs
+│   │   ├── InventoryController.cs
 │   │   ├── PromotionsController.cs
 │   │   └── ReportsController.cs
-│   ├── Middlewares/                      # Global Exception Handling, JWT Auth Middlewares
-│   │   └── ExceptionMiddleware.cs
+│   ├── Middlewares/
+│   │   └── ExceptionMiddleware.cs        # Bat exception toan cuc → ApiResponse<T>
 │   ├── Filters/                          # Action & Validation Filters
-│   ├── appsettings.json                  # Connection strings & JWT configurations
+│   ├── appsettings.json
 │   └── Program.cs                        # Dependency Injection, Middleware Pipeline
 │
 ├── Munchify.BLL/                         # [Layer 2: Business Logic Layer (BLL)]
 │   ├── Service/
 │   │   ├── Interfaces/
-│   │   │   ├── IAuthService.cs
-│   │   │   ├── ICategoryService.cs
-│   │   │   ├── IUnitService.cs
-│   │   │   ├── IProductService.cs
-│   │   │   ├── ICustomerService.cs
-│   │   │   ├── IOrderService.cs             # Core POS checkout, calculations & transactions
-│   │   │   ├── IStockImportService.cs       # Warehouse replenishment logic
-│   │   │   ├── IInventoryService.cs         # StockMovements tracking & deduction
-│   │   │   ├── IPromotionService.cs
-│   │   │   └── IReportService.cs
+│   │   │   ├── IAuthService.cs           # F-01.x: Login, profile, user management
+│   │   │   ├── ICategoryService.cs       # F-02.1
+│   │   │   ├── IUnitService.cs           # F-02.2
+│   │   │   ├── IProductService.cs        # F-02.3 / F-02.4
+│   │   │   ├── ICustomerService.cs       # F-04.x
+│   │   │   ├── IOrderService.cs          # F-05.x: Core POS checkout & transactions
+│   │   │   ├── ISupplierService.cs       # F-03.1
+│   │   │   ├── IStockImportService.cs    # F-03.2 / F-03.3: Warehouse replenishment
+│   │   │   ├── IInventoryService.cs      # F-03.4 / F-08.x: Adjustment & forecast
+│   │   │   ├── IPromotionService.cs      # F-06.x
+│   │   │   └── IReportService.cs         # F-07.x
 │   │   ├── AuthService.cs
 │   │   ├── CategoryService.cs
 │   │   ├── UnitService.cs
 │   │   ├── ProductService.cs
 │   │   ├── CustomerService.cs
 │   │   ├── OrderService.cs
+│   │   ├── SupplierService.cs
 │   │   ├── StockImportService.cs
 │   │   ├── InventoryService.cs
 │   │   ├── PromotionService.cs
 │   │   └── ReportService.cs
-│   └── Helpers/ / Mappers/              # AutoMapper / Mapping Extensions
+│   ├── Helpers/
+│   │   ├── MappingProfile.cs            # AutoMapper: Entity <-> DTO (dung o moi Service)
+│   │   ├── PasswordHelper.cs            # F-01.1: BCrypt hash & verify password
+│   │   └── JwtHelper.cs                 # F-01.1: Generate JWT Token voi claims
+│   └── Exceptions/
+│       ├── NotFoundException.cs          # Entity khong ton tai → HTTP 404
+│       ├── InsufficientStockException.cs # F-05.1 / BR-02: Hang khong du → HTTP 400
+│       └── ValidationException.cs        # BR-03: Input / business rule khong hop le → HTTP 400
 │
-└── Munchify.DAL/                 # [Layer 3: Data Access Layer (DAL)]
+└── Munchify.DAL/                         # [Layer 3: Data Access Layer (DAL)]
     ├── Repository/
     │   ├── Interfaces/
     │   │   ├── IGenericRepository.cs
@@ -82,6 +92,7 @@ Munchify.Backend/
     │   │   ├── IProductRepository.cs
     │   │   ├── IOrderRepository.cs
     │   │   ├── ICustomerRepository.cs
+    │   │   ├── ISupplierRepository.cs
     │   │   ├── IStockImportRepository.cs
     │   │   ├── IStockMovementRepository.cs
     │   │   └── IPromotionRepository.cs
@@ -91,41 +102,102 @@ Munchify.Backend/
     │   ├── ProductRepository.cs
     │   ├── OrderRepository.cs
     │   ├── CustomerRepository.cs
+    │   ├── SupplierRepository.cs
     │   ├── StockImportRepository.cs
     │   ├── StockMovementRepository.cs
     │   └── PromotionRepository.cs
     │
-    ├── Data/                           # [Database Context & Migrations]
-    │   ├── AppDbContext.cs             # EF Core DbContext with Fluent API configuration
-    │   └── Migrations/                 # EF Core migration history
+    ├── Data/
+    │   ├── MunchifyDbContext.cs         # [EXISTS] EF Core DbContext with Fluent API
+    │   └── Migrations/
     │
-    ├── Entities/                       # Direct representation of SQL Server tables
-    │   ├── User.cs
-    │   ├── Category.cs
-    │   ├── Unit.cs
-    │   ├── Product.cs
-    │   ├── ProductCombo.cs
-    │   ├── Customer.cs
-    │   ├── Order.cs
-    │   ├── OrderDetail.cs
-    │   ├── Payment.cs
-    │   ├── StockMovement.cs
-    │   ├── Supplier.cs
-    │   ├── StockImport.cs
-    │   ├── StockImportDetail.cs
-    │   ├── Promotion.cs
-    │   └── PromotionProduct.cs
-    ├── Enums/                      # Roles, OrderStatus, MovementType, etc.
+    ├── Entities/                        # [EXISTS] Direct SQL Server table representations
+    │   ├── User.cs                      # [EXISTS]
+    │   ├── Category.cs                  # [EXISTS]
+    │   ├── Unit.cs                      # [EXISTS]
+    │   ├── Product.cs                   # [EXISTS]
+    │   ├── ProductCombo.cs              # [EXISTS]
+    │   ├── Customer.cs                  # [EXISTS]
+    │   ├── Order.cs                     # [EXISTS]
+    │   ├── OrderDetail.cs               # [EXISTS]
+    │   ├── Payment.cs                   # [EXISTS]
+    │   ├── StockMovement.cs             # [EXISTS]
+    │   ├── Supplier.cs                  # [EXISTS]
+    │   ├── StockImport.cs               # [EXISTS]
+    │   ├── StockImportDetail.cs         # [EXISTS]
+    │   ├── Promotion.cs                 # [EXISTS]
+    │   └── PromotionProduct.cs          # [EXISTS]
     │
-    └── DTOs/                       # [Data Transfer Objects & Contracts]
-        ├── Common/                          # ApiResponse<T>, PagedResult<T>
-        ├── Auth/                            # LoginRequest, LoginResponse, UserDto
-        ├── Products/                        # ProductRequest, ProductResponse, ComboItemDto
-        ├── Orders/                          # CreateOrderRequest, OrderDetailDto, OrderResponse
-        ├── Customers/                       # CustomerDto, CreateCustomerRequest
-        ├── StockImports/                    # CreateImportRequest, CompleteImportResponse
-        ├── Promotions/                      # PromotionDto, ApplyPromotionRequest
-        └── Reports/                         # RevenueSummaryDto, TopSellingProductDto
+    ├── Enums/
+    │   ├── UserRole.cs                  # ADMIN | STAFF  → F-01.x, JWT claims
+    │   ├── OrderStatus.cs               # PENDING | COMPLETED | CANCELLED  → F-05.x
+    │   ├── PaymentStatus.cs             # PENDING | PAID | FAILED | REFUNDED  → F-05.x
+    │   ├── PaymentMethod.cs             # CASH | QR_CODE | BANK_TRANSFER  → F-05.3
+    │   ├── MovementType.cs              # IMPORT | SALE | COMBO_SALE | ADJUSTMENT | DAMAGE  → F-03.x, F-05.3
+    │   ├── StockImportStatus.cs         # DRAFT | COMPLETED | CANCELLED  → F-03.2 / F-03.3
+    │   ├── DiscountType.cs              # PERCENTAGE | FIXED_AMOUNT  → F-06.1
+    │   └── ReferenceType.cs             # ORDER | STOCK_IMPORT | MANUAL  → BR-07
+    │
+    └── DTOs/
+        ├── Common/
+        │   ├── ApiResponse.cs           # Wrapper chuan cho moi response (Success, Message, Data, Errors)
+        │   └── PagedResult.cs           # Phan trang (Items, TotalCount, Page, PageSize)
+        │
+        ├── Auth/                        # Module 1: Authentication & Account Management
+        │   ├── LoginRequest.cs          # F-01.1: { Username, Password }
+        │   ├── LoginResponse.cs         # F-01.1: { Token, ExpiresAt, UserDto }
+        │   ├── UserDto.cs               # F-01.2: { UserId, Username, FullName, Role, IsActive }
+        │   ├── CreateUserRequest.cs     # F-01.3: { Username, Password, FullName, Phone, Email, Role }
+        │   └── UpdateUserRequest.cs     # F-01.3: { FullName, Phone, Email, IsActive }
+        │
+        ├── Categories/                  # Module 2: Catalog – Categories (F-02.1)
+        │   ├── CategoryDto.cs           # { CategoryId, CategoryName, Description, IsActive }
+        │   └── SaveCategoryRequest.cs   # { CategoryName, Description }
+        │
+        ├── Units/                       # Module 2: Catalog – Units (F-02.2)
+        │   ├── UnitDto.cs               # { UnitId, UnitName, Description, IsActive }
+        │   └── SaveUnitRequest.cs       # { UnitName, Description }
+        │
+        ├── Products/                    # Module 2: Catalog – Products (F-02.3 / F-02.4)
+        │   ├── ProductRequest.cs        # Tao / sua SP don & combo (ComboItems[])
+        │   ├── ProductResponse.cs       # { ProductId, ProductName, Price, StockQty, Category, Unit, ComboItems[] }
+        │   └── ComboItemDto.cs          # F-02.4: { ComponentProductId, ComponentProductName, Quantity }
+        │
+        ├── Suppliers/                   # Module 3: Warehouse – Supplier (F-03.1)
+        │   ├── SupplierDto.cs           # { SupplierId, SupplierName, ContactName, Phone, Address, IsActive }
+        │   └── SaveSupplierRequest.cs   # { SupplierName, ContactName, Phone, Address }
+        │
+        ├── StockImports/                # Module 3: Warehouse – Stock Import (F-03.2/F-03.3/F-08.4)
+        │   ├── CreateImportRequest.cs   # F-03.2: { SupplierId, Notes, Items: ImportDetailDto[] }
+        │   ├── ImportDetailDto.cs       # { ProductId, Quantity, ImportPrice }
+        │   └── CompleteImportResponse.cs # F-03.3: { ImportId, ImportCode, TotalAmount, UpdatedProducts[] }
+        │
+        ├── Inventory/                   # Module 3: Adjustment (F-03.4) + AI Forecast (F-08.x)
+        │   ├── StockAdjustmentRequest.cs # F-03.4: { ProductId, Quantity(+-), MovementType, Reason }
+        │   └── ForecastItemDto.cs        # F-08.1/2/3: { ProductId, ProductName, StockQuantity,
+        │                                 #   AvgDailyUsage, DaysRemaining, RiskLevel, SuggestedImportQty }
+        │
+        ├── Customers/                   # Module 4: Customer Loyalty (F-04.x)
+        │   ├── CreateCustomerRequest.cs  # F-04.2: { CustomerName, Phone }
+        │   └── CustomerDto.cs            # F-04.1: { CustomerId, CustomerName, Phone, LoyaltyPoints }
+        │
+        ├── Orders/                      # Module 5: POS Checkout (F-05.x)
+        │   ├── CreateOrderRequest.cs     # F-05.3: { CustomerId?, PromotionCode?, PaymentMethod, Items[] }
+        │   ├── OrderItemRequest.cs       # { ProductId, Quantity }
+        │   ├── OrderDetailDto.cs         # { ProductName, UnitName, UnitPrice, Quantity, TotalAmount }
+        │   └── OrderResponse.cs          # { OrderId, OrderCode, Subtotal, DiscountAmount, TotalAmount,
+        │                                 #   PointsEarned, PointsRedeemed, Payment, OrderDetails[] }
+        │
+        ├── Promotions/                  # Module 6: Promotions (F-06.x)
+        │   ├── PromotionDto.cs           # { PromotionId, PromotionCode, DiscountType, DiscountValue,
+        │   │                             #   MinimumOrderAmount, StartDate, EndDate, IsActive }
+        │   ├── SavePromotionRequest.cs   # F-06.1: Tao / cap nhat promotion + ProductIds[] (F-06.2)
+        │   └── ApplyPromotionRequest.cs  # F-05.2: { PromotionCode, Subtotal } → DiscountAmount
+        │
+        └── Reports/                     # Module 7: Reporting (F-07.x)
+            ├── RevenueSummaryDto.cs      # F-07.1: { TotalRevenue, OrderCount, AvgOrderValue, ByPaymentMethod[] }
+            ├── TopSellingProductDto.cs   # F-07.2: { ProductId, ProductName, TotalQuantity, TotalRevenue }
+            └── LowStockAlertDto.cs       # F-07.3: { ProductId, ProductName, StockQuantity, MinStockLevel }
 ```
 
 ---
