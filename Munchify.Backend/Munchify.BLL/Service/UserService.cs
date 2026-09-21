@@ -25,6 +25,7 @@ public class UserService : IUserService
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
 
         var users = await _userRepository.GetAllStaffAsync(role, isActive, page, pageSize, cancellationToken);
         var totalCount = await _userRepository.GetTotalStaffCountAsync(role, isActive, cancellationToken);
@@ -142,6 +143,16 @@ public class UserService : IUserService
         if (user == null)
         {
             return ApiResponse<bool>.ErrorResult($"Không tìm thấy tài khoản nhân viên có ID {id}");
+        }
+
+        // Không cho phép khóa ADMIN nếu đây là ADMIN đang hoạt động duy nhất
+        if (user.Role == "ADMIN" && user.IsActive)
+        {
+            var activeAdmins = await _userRepository.GetAllStaffAsync("ADMIN", true, 1, 10, cancellationToken);
+            if (activeAdmins.Count() <= 1)
+            {
+                return ApiResponse<bool>.ErrorResult("Không thể khóa tài khoản Quản trị viên (ADMIN) duy nhất đang hoạt động trong hệ thống");
+            }
         }
 
         user.IsActive = !user.IsActive;
