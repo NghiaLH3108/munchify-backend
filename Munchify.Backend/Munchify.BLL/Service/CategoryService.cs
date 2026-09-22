@@ -48,9 +48,15 @@ public class CategoryService : ICategoryService
                          .ToList();
 
         var mappedItems = _mapper.Map<IEnumerable<CategoryDto>>(items);
-        var pagedResult = new PagedResult<CategoryDto>(mappedItems, totalCount, page, pageSize);
+        var pagedResult = new PagedResult<CategoryDto> 
+        { 
+            Items = mappedItems, 
+            TotalCount = totalCount, 
+            PageNumber = page, 
+            PageSize = pageSize 
+        };
 
-        return ApiResponse<PagedResult<CategoryDto>>.Ok(pagedResult);
+        return ApiResponse<PagedResult<CategoryDto>>.SuccessResult(pagedResult);
     }
 
     public async Task<ApiResponse<CategoryDto>> GetCategoryByIdAsync(int id)
@@ -59,11 +65,11 @@ public class CategoryService : ICategoryService
         
         if (category == null)
         {
-            return ApiResponse<CategoryDto>.Error("Category not found.");
+            return ApiResponse<CategoryDto>.ErrorResult("Category not found.");
         }
 
         var dto = _mapper.Map<CategoryDto>(category);
-        return ApiResponse<CategoryDto>.Ok(dto);
+        return ApiResponse<CategoryDto>.SuccessResult(dto);
     }
 
     public async Task<ApiResponse<CategoryDto>> CreateCategoryAsync(SaveCategoryRequest request)
@@ -76,7 +82,7 @@ public class CategoryService : ICategoryService
         await _unitOfWork.CompleteAsync();
 
         var dto = _mapper.Map<CategoryDto>(category);
-        return ApiResponse<CategoryDto>.Ok(dto, "Category created successfully.");
+        return ApiResponse<CategoryDto>.SuccessResult(dto, "Category created successfully.");
     }
 
     public async Task<ApiResponse<CategoryDto>> UpdateCategoryAsync(int id, SaveCategoryRequest request)
@@ -85,7 +91,7 @@ public class CategoryService : ICategoryService
         
         if (category == null)
         {
-            return ApiResponse<CategoryDto>.Error("Category not found.");
+            return ApiResponse<CategoryDto>.ErrorResult("Category not found.");
         }
 
         _mapper.Map(request, category);
@@ -95,7 +101,7 @@ public class CategoryService : ICategoryService
         await _unitOfWork.CompleteAsync();
 
         var dto = _mapper.Map<CategoryDto>(category);
-        return ApiResponse<CategoryDto>.Ok(dto, "Category updated successfully.");
+        return ApiResponse<CategoryDto>.SuccessResult(dto, "Category updated successfully.");
     }
 
     public async Task<ApiResponse<bool>> DeleteCategoryAsync(int id)
@@ -104,7 +110,7 @@ public class CategoryService : ICategoryService
         
         if (category == null)
         {
-            return ApiResponse<bool>.Error("Category not found.");
+            return ApiResponse<bool>.ErrorResult("Category not found.");
         }
 
         // Using Soft Delete as it is generally safer for referential integrity
@@ -114,6 +120,6 @@ public class CategoryService : ICategoryService
         _unitOfWork.Categories.Update(category);
         await _unitOfWork.CompleteAsync();
 
-        return ApiResponse<bool>.Ok(true, "Category deleted (deactivated) successfully.");
+        return ApiResponse<bool>.SuccessResult(true, "Category deleted (deactivated) successfully.");
     }
 }

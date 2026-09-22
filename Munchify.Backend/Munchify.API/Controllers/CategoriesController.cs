@@ -45,7 +45,7 @@ public class CategoriesController : ControllerBase
     public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategory([FromBody] SaveCategoryRequest request)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ApiResponse<CategoryDto>.Error("Validation failed"));
+            return BadRequest(ApiResponse<CategoryDto>.ErrorResult("Validation failed"));
 
         var response = await _categoryService.CreateCategoryAsync(request);
         if (!response.Success)
@@ -58,7 +58,7 @@ public class CategoriesController : ControllerBase
     public async Task<ActionResult<ApiResponse<CategoryDto>>> UpdateCategory(int id, [FromBody] SaveCategoryRequest request)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ApiResponse<CategoryDto>.Error("Validation failed"));
+            return BadRequest(ApiResponse<CategoryDto>.ErrorResult("Validation failed"));
 
         var response = await _categoryService.UpdateCategoryAsync(id, request);
         if (!response.Success)
