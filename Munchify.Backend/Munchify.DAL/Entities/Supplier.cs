@@ -20,4 +20,6 @@ public partial class Supplier
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<StockImport> StockImports { get; set; } = new List<StockImport>();
+
+    public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 }
