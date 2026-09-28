@@ -17,6 +17,10 @@ builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IInventoryService, Mu
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IProductRepository, Munchify.DAL.Repository.ProductRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IProductService, Munchify.BLL.Service.ProductService>();
 
+builder.Services.AddScoped(typeof(Munchify.DAL.Repository.Interfaces.IGenericRepository<>), typeof(Munchify.DAL.Repository.GenericRepository<>));
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IStockImportRepository, Munchify.DAL.Repository.StockImportRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IStockImportService, Munchify.BLL.Service.StockImportService>();
+
 builder.Services.AddAutoMapper(config => config.AddProfile<Munchify.BLL.Helpers.MappingProfile>());
 
 builder.Services.AddControllers();

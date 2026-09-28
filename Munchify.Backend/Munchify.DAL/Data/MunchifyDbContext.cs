@@ -7,6 +7,10 @@ namespace Munchify.DAL.Data;
 
 public partial class MunchifyDbContext : DbContext
 {
+    public MunchifyDbContext()
+    {
+    }
+
     public MunchifyDbContext(DbContextOptions<MunchifyDbContext> options)
         : base(options)
     {
@@ -40,11 +44,15 @@ public partial class MunchifyDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=LAPTOP-D5C51MDO\\SQL2022B;Database=FnBStoreDB;Trusted_Connection=True;TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__19093A0B2BC73DF6");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__19093A0B3CDAB656");
 
             entity.Property(e => e.CategoryName).HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
@@ -55,9 +63,9 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__A4AE64D8CBAC31A8");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__A4AE64D84454A4E6");
 
-            entity.HasIndex(e => e.Phone, "UQ__Customer__5C7E359EAC64F105").IsUnique();
+            entity.HasIndex(e => e.Phone, "UQ__Customer__5C7E359EFFB112E2").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.CustomerName).HasMaxLength(100);
@@ -69,9 +77,9 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__Orders__C3905BCFD03BD205");
+            entity.HasKey(e => e.OrderId).HasName("PK__Orders__C3905BCF77D89AD1");
 
-            entity.HasIndex(e => e.OrderCode, "UQ__Orders__999B522969960023").IsUnique();
+            entity.HasIndex(e => e.OrderCode, "UQ__Orders__999B52299BFB5F82").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.DiscountAmount).HasColumnType("decimal(18, 2)");
@@ -101,7 +109,7 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<OrderDetail>(entity =>
         {
-            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__D3B9D36C3EFCEDCA");
+            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__D3B9D36C9D808B82");
 
             entity.Property(e => e.DiscountAmount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ProductName).HasMaxLength(150);
@@ -122,7 +130,7 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__9B556A38E9A95F68");
+            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__9B556A382124B1E2");
 
             entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
@@ -145,9 +153,9 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6CDCC55560B");
+            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6CD19ADFA52");
 
-            entity.HasIndex(e => e.ProductCode, "UQ__Products__2F4E024F43861317").IsUnique();
+            entity.HasIndex(e => e.ProductCode, "UQ__Products__2F4E024FD72FC08C").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Description).HasMaxLength(500);
@@ -176,7 +184,7 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<ProductCombo>(entity =>
         {
-            entity.HasKey(e => e.ComboId).HasName("PK__ProductC__DD42582E4E442C5A");
+            entity.HasKey(e => e.ComboId).HasName("PK__ProductC__DD42582E664288B3");
 
             entity.Property(e => e.Quantity).HasDefaultValue(1);
 
@@ -193,9 +201,9 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Promotion>(entity =>
         {
-            entity.HasKey(e => e.PromotionId).HasName("PK__Promotio__52C42FCFB0BC5172");
+            entity.HasKey(e => e.PromotionId).HasName("PK__Promotio__52C42FCFD787135E");
 
-            entity.HasIndex(e => e.PromotionCode, "UQ__Promotio__A617E4B6A7648C83").IsUnique();
+            entity.HasIndex(e => e.PromotionCode, "UQ__Promotio__A617E4B6A3FD0920").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Description).HasMaxLength(500);
@@ -217,23 +225,23 @@ public partial class MunchifyDbContext : DbContext
                     r => r.HasOne<Product>().WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Promotion__Produ__0C85DE4D"),
+                        .HasConstraintName("FK__Promotion__Produ__10566F31"),
                     l => l.HasOne<Promotion>().WithMany()
                         .HasForeignKey("PromotionId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Promotion__Promo__0B91BA14"),
+                        .HasConstraintName("FK__Promotion__Promo__0F624AF8"),
                     j =>
                     {
-                        j.HasKey("PromotionId", "ProductId").HasName("PK__Promotio__9984E3A35C443C80");
+                        j.HasKey("PromotionId", "ProductId").HasName("PK__Promotio__9984E3A33335C585");
                         j.ToTable("PromotionProducts");
                     });
         });
 
         modelBuilder.Entity<StockImport>(entity =>
         {
-            entity.HasKey(e => e.ImportId).HasName("PK__StockImp__869767EA4BE353CE");
+            entity.HasKey(e => e.ImportId).HasName("PK__StockImp__869767EAE273D6D1");
 
-            entity.HasIndex(e => e.ImportCode, "UQ__StockImp__439991382D0E5E2A").IsUnique();
+            entity.HasIndex(e => e.ImportCode, "UQ__StockImp__4399913883ABF98B").IsUnique();
 
             entity.Property(e => e.ImportCode)
                 .HasMaxLength(30)
@@ -249,17 +257,17 @@ public partial class MunchifyDbContext : DbContext
             entity.HasOne(d => d.Supplier).WithMany(p => p.StockImports)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockImpo__Suppl__7B5B524B");
+                .HasConstraintName("FK__StockImpo__Suppl__7F2BE32F");
 
             entity.HasOne(d => d.User).WithMany(p => p.StockImports)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockImpo__UserI__7C4F7684");
+                .HasConstraintName("FK__StockImpo__UserI__00200768");
         });
 
         modelBuilder.Entity<StockImportDetail>(entity =>
         {
-            entity.HasKey(e => e.ImportDetailId).HasName("PK__StockImp__CDFBBA7197ADBB86");
+            entity.HasKey(e => e.ImportDetailId).HasName("PK__StockImp__CDFBBA7113F33403");
 
             entity.Property(e => e.ImportPrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)");
@@ -267,17 +275,17 @@ public partial class MunchifyDbContext : DbContext
             entity.HasOne(d => d.Import).WithMany(p => p.StockImportDetails)
                 .HasForeignKey(d => d.ImportId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockImpo__Impor__02084FDA");
+                .HasConstraintName("FK__StockImpo__Impor__05D8E0BE");
 
             entity.HasOne(d => d.Product).WithMany(p => p.StockImportDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockImpo__Produ__02FC7413");
+                .HasConstraintName("FK__StockImpo__Produ__06CD04F7");
         });
 
         modelBuilder.Entity<StockMovement>(entity =>
         {
-            entity.HasKey(e => e.StockMovementId).HasName("PK__StockMov__E963E37CA88427F5");
+            entity.HasKey(e => e.StockMovementId).HasName("PK__StockMov__E963E37CFB3CE876");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.MovementType)
@@ -301,7 +309,7 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666B44EFEFE1F");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666B4E04A3581");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.ContactName).HasMaxLength(100);
@@ -311,11 +319,28 @@ public partial class MunchifyDbContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false);
             entity.Property(e => e.SupplierName).HasMaxLength(150);
+
+            entity.HasMany(d => d.Categories).WithMany(p => p.Suppliers)
+                .UsingEntity<Dictionary<string, object>>(
+                    "SupplierCategory",
+                    r => r.HasOne<Category>().WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Categ__7B5B524B"),
+                    l => l.HasOne<Supplier>().WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Suppl__7A672E12"),
+                    j =>
+                    {
+                        j.HasKey("SupplierId", "CategoryId").HasName("PK__Supplier__EA76F514B84DCB6A");
+                        j.ToTable("SupplierCategories");
+                    });
         });
 
         modelBuilder.Entity<Unit>(entity =>
         {
-            entity.HasKey(e => e.UnitId).HasName("PK__Units__44F5ECB5A409DB40");
+            entity.HasKey(e => e.UnitId).HasName("PK__Units__44F5ECB5858D8B6C");
 
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
@@ -324,9 +349,9 @@ public partial class MunchifyDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C5C2E940E");
+            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C2BAEE513");
 
-            entity.HasIndex(e => e.Username, "UQ__Users__536C85E415B9A638").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__Users__536C85E428D4F926").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Email)
