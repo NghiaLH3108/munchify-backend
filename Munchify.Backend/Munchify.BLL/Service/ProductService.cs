@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Munchify.BLL.Service.Interfaces;
@@ -101,6 +102,28 @@ public class ProductService : IProductService
         catch (Exception ex)
         {
             return ApiResponse<ProductDetailDto>.ErrorResult($"Lỗi khi lấy chi tiết sản phẩm: {ex.Message}");
+        }
+    }
+    public async Task<ApiResponse<IEnumerable<ProductForStockDto>>> GetProductsForStockAsync(int? supplierId)
+    {
+        try
+        {
+            var products = await _productRepository.GetProductsForStockAsync(supplierId);
+            
+            var productDtos = products.Select(p => new ProductForStockDto
+            {
+                ProductId = p.ProductId,
+                ProductName = p.ProductName,
+                Sku = p.ProductCode,
+                Price = p.Price,
+                UnitName = p.Unit != null ? p.Unit.UnitName : "N/A"
+            }).ToList();
+
+            return ApiResponse<IEnumerable<ProductForStockDto>>.SuccessResult(productDtos);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<IEnumerable<ProductForStockDto>>.ErrorResult($"Lỗi khi lấy danh sách sản phẩm theo nhà cung cấp: {ex.Message}");
         }
     }
 }

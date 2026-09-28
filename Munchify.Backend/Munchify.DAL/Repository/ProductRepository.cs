@@ -70,4 +70,16 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
                     .ThenInclude(cp => cp.Unit)
             .FirstOrDefaultAsync(p => p.ProductId == id);
     }
+
+    public async Task<IEnumerable<Product>> GetProductsForStockAsync(int? supplierId)
+    {
+        var query = _context.Products.Include(p => p.Unit).AsQueryable();
+
+        if (supplierId.HasValue)
+        {
+            query = query.Where(p => p.Category.Suppliers.Any(s => s.SupplierId == supplierId.Value));
+        }
+
+        return await query.ToListAsync();
+    }
 }

@@ -8,5 +8,6 @@ namespace Munchify.DAL.Repository.Interfaces;
 public interface IProductRepository : IGenericRepository<Product>
 {
     Task<(IEnumerable<Product> Items, int TotalCount)> GetProductsAsync(ProductFilterParams filter);
+    Task<IEnumerable<Product>> GetProductsForStockAsync(int? supplierId);
     Task<Product?> GetProductByIdWithDetailsAsync(int id);
 }
