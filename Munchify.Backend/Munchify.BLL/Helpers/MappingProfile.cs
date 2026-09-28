@@ -12,5 +12,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products.Count));
             
         CreateMap<SaveCategoryRequest, Category>();
+
+        CreateMap<StockMovement, Munchify.DAL.DTOs.Inventory.StockMovementDto>()
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : string.Empty))
+            .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty));
     }
 }

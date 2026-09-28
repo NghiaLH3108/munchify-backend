@@ -12,12 +12,14 @@ public class UnitOfWork : IUnitOfWork
     private readonly MunchifyDbContext _context;
     
     public ICategoryRepository Categories { get; private set; }
+    public IStockMovementRepository StockMovements { get; private set; }
     public IProductRepository Products { get; private set; }
 
     public UnitOfWork(MunchifyDbContext context)
     {
         _context = context;
         Categories = new CategoryRepository(_context);
+        StockMovements = new StockMovementRepository(_context);
         Products = new ProductRepository(_context);
     }
 
