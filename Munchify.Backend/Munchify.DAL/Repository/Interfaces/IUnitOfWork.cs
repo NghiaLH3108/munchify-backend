@@ -8,6 +8,7 @@ namespace Munchify.DAL.Repository.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     ICategoryRepository Categories { get; }
+    IUnitRepository Units { get; }
     IStockMovementRepository StockMovements { get; }
     IProductRepository Products { get; }
     
