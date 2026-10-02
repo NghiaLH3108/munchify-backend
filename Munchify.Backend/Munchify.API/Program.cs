@@ -21,6 +21,9 @@ builder.Services.AddScoped(typeof(Munchify.DAL.Repository.Interfaces.IGenericRep
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IStockImportRepository, Munchify.DAL.Repository.StockImportRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IStockImportService, Munchify.BLL.Service.StockImportService>();
 
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ICustomerRepository, Munchify.DAL.Repository.CustomerRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Munchify.BLL.Service.CustomerService>();
+
 builder.Services.AddAutoMapper(config => config.AddProfile<Munchify.BLL.Helpers.MappingProfile>());
 
 builder.Services.AddControllers();
@@ -47,8 +50,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
+// Bỏ HttpsRedirection để dùng cổng HTTP cục bộ không bị lỗi CORS/SSL Timeout
+// app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 app.UseAuthorization();
