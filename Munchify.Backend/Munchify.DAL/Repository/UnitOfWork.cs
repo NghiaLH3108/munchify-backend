@@ -12,6 +12,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly MunchifyDbContext _context;
     
     public ICategoryRepository Categories { get; private set; }
+    public IUnitRepository Units { get; private set; }
     public IStockMovementRepository StockMovements { get; private set; }
     public IProductRepository Products { get; private set; }
 
@@ -19,6 +20,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context;
         Categories = new CategoryRepository(_context);
+        Units = new UnitRepository(_context);
         StockMovements = new StockMovementRepository(_context);
         Products = new ProductRepository(_context);
     }

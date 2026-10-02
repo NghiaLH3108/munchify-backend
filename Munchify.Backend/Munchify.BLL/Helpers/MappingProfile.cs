@@ -1,5 +1,6 @@
 using AutoMapper;
 using Munchify.DAL.DTOs.Categories;
+using Munchify.DAL.DTOs.Units;
 using Munchify.DAL.Entities;
 
 namespace Munchify.BLL.Helpers;
@@ -12,6 +13,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products.Count));
             
         CreateMap<SaveCategoryRequest, Category>();
+
+        // Unit mappings
+        CreateMap<Unit, UnitDto>();
+        CreateMap<SaveUnitRequest, Unit>();
 
         CreateMap<StockMovement, Munchify.DAL.DTOs.Inventory.StockMovementDto>()
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : string.Empty))
