@@ -14,4 +14,9 @@
     <ProjectReference Include="..\Munchify.DAL\Munchify.DAL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
+  </ItemGroup>
+
 </Project>

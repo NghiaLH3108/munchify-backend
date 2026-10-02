@@ -18,4 +18,6 @@ public partial class Category
     public DateTime UpdatedAt { get; set; }
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
+    public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
 }

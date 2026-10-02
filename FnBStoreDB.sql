@@ -161,6 +161,13 @@ CREATE TABLE Suppliers (
     CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE()
 );
 
+-- 11.5 SupplierCategories Table
+CREATE TABLE SupplierCategories (
+    SupplierId INT NOT NULL FOREIGN KEY REFERENCES Suppliers(SupplierId),
+    CategoryId INT NOT NULL FOREIGN KEY REFERENCES Categories(CategoryId),
+    PRIMARY KEY (SupplierId, CategoryId)
+);
+
 -- 12. StockImports Table
 CREATE TABLE StockImports (
     ImportId INT IDENTITY(1,1) PRIMARY KEY,
@@ -246,6 +253,15 @@ VALUES
 (N'Đại Lý Nước Giải Khát Tân Bình', N'Trần Đình Trọng', '02838333333', N'78 Lý Thường Kiệt, Q. Tân Bình, TP.HCM', 1, '2026-04-01 08:00:00'),
 (N'Công Ty Nông Sản Xanh', N'Phạm Minh Hoàng', '02838444444', N'12 Hoàng Diệu, Q.4, TP.HCM', 1, '2026-04-01 08:00:00'),
 (N'Nhà Phân Phối Trà & Nguyên Liệu F&B', N'Vũ Thị Hà', '02838555555', N'99 Nguyễn Trãi, Q.1, TP.HCM', 1, '2026-04-01 08:00:00');
+
+-- 2.4.5 SupplierCategories (Mock data mapping)
+INSERT INTO SupplierCategories (SupplierId, CategoryId)
+VALUES 
+(1, 1), -- An An supplies Bánh Tráng & Snacks
+(2, 2), -- Sài Gòn supplies Thịt Khô
+(3, 3), -- Tân Bình supplies Nước Đóng Chai
+(4, 4), -- Nông Sản Xanh supplies Nước Pha Chế
+(1, 2); -- An An also supplies Thịt Khô
 
 -- 2.5 Customers (5 records)
 INSERT INTO Customers (CustomerName, Phone, LoyaltyPoints, CreatedAt, UpdatedAt)

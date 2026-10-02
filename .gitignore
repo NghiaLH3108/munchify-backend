@@ -399,3 +399,18 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Local development guides & documentation (Ignored from Git)
+docs_private/
+local_docs/
+dev_docs/
+
+# AI Agent and Local IDE specific files
+.agents/
+skills-lock.json
+.gemini/
+
+# Local documents & Nested sub-repos
+Munchify_Project_Backlog_G01.pdf
+munchify-frontend/
+

@@ -7,6 +7,10 @@ namespace Munchify.DAL.Data;
 
 public partial class MunchifyDbContext : DbContext
 {
+    public MunchifyDbContext()
+    {
+    }
+
     public MunchifyDbContext(DbContextOptions<MunchifyDbContext> options)
         : base(options)
     {
@@ -311,6 +315,23 @@ public partial class MunchifyDbContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false);
             entity.Property(e => e.SupplierName).HasMaxLength(150);
+
+            entity.HasMany(d => d.Categories).WithMany(p => p.Suppliers)
+                .UsingEntity<Dictionary<string, object>>(
+                    "SupplierCategory",
+                    r => r.HasOne<Category>().WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Categ__2A164134"),
+                    l => l.HasOne<Supplier>().WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Suppl__29221CFB"),
+                    j =>
+                    {
+                        j.HasKey("SupplierId", "CategoryId").HasName("PK__Supplier__EA76F514F0CA6141");
+                        j.ToTable("SupplierCategories");
+                    });
         });
 
         modelBuilder.Entity<Unit>(entity =>
