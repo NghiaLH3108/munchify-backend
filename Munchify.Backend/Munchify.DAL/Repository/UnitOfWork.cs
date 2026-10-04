@@ -15,6 +15,7 @@ public class UnitOfWork : IUnitOfWork
     public IUnitRepository Units { get; private set; }
     public IStockMovementRepository StockMovements { get; private set; }
     public IProductRepository Products { get; private set; }
+    public IDamagedExpiredRecordRepository DamagedExpiredRecords { get; private set; }
 
     public UnitOfWork(MunchifyDbContext context)
     {
@@ -23,6 +24,7 @@ public class UnitOfWork : IUnitOfWork
         Units = new UnitRepository(_context);
         StockMovements = new StockMovementRepository(_context);
         Products = new ProductRepository(_context);
+        DamagedExpiredRecords = new DamagedExpiredRecordRepository(_context);
     }
 
     public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)
