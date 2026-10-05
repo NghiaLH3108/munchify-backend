@@ -15,49 +15,12 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
     {
     }
 
-    public async Task<(IEnumerable<Product> Items, int TotalCount)> GetProductsAsync(ProductFilterParams filter)
+    public IQueryable<Product> GetProductsQuery()
     {
-        var query = _context.Products
+        return _context.Products
             .Include(p => p.Category)
             .Include(p => p.Unit)
             .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
-        {
-            var searchTerm = filter.SearchTerm.Trim().ToLower();
-            query = query.Where(p => p.ProductName.ToLower().Contains(searchTerm) || 
-                                     p.ProductCode.ToLower().Contains(searchTerm));
-        }
-
-        if (filter.CategoryId.HasValue)
-        {
-            query = query.Where(p => p.CategoryId == filter.CategoryId.Value);
-        }
-
-        if (filter.UnitId.HasValue)
-        {
-            query = query.Where(p => p.UnitId == filter.UnitId.Value);
-        }
-
-        if (filter.IsCombo.HasValue)
-        {
-            query = query.Where(p => p.IsCombo == filter.IsCombo.Value);
-        }
-
-        if (filter.IsActive.HasValue)
-        {
-            query = query.Where(p => p.IsActive == filter.IsActive.Value);
-        }
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .OrderBy(p => p.ProductName)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
     }
 
     public async Task<Product?> GetProductByIdWithDetailsAsync(int id)

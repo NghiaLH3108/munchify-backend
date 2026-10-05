@@ -51,6 +51,7 @@ if (app.Environment.IsDevelopment())
 // app.UseHttpsRedirection(); // Disabled for local HTTP development
 
 app.UseCors("AllowAll");
+app.UseStaticFiles();
 
 app.UseAuthorization();
 

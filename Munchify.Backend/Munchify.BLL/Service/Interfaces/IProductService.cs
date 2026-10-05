@@ -7,7 +7,10 @@ namespace Munchify.BLL.Service.Interfaces;
 
 public interface IProductService
 {
-    Task<ApiResponse<PagedResult<ProductDto>>> GetProductsForStaffAsync(ProductFilterParams filter);
+    Task<ApiResponse<PagedResult<ProductDto>>> GetProductsAsync(ProductFilterParams filter);
     Task<ApiResponse<IEnumerable<ProductForStockDto>>> GetProductsForStockAsync(int? supplierId);
     Task<ApiResponse<ProductDetailDto>> GetProductDetailAsync(int id);
+    Task<ApiResponse<ProductDetailDto>> CreateProductAsync(ProductRequest request);
+    Task<ApiResponse<ProductDetailDto>> UpdateProductAsync(int id, ProductRequest request);
+    Task<ApiResponse<bool>> ToggleProductStatusAsync(int id);
 }
