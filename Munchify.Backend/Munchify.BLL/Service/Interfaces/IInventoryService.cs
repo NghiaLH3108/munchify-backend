@@ -16,4 +16,7 @@ public interface IInventoryService
         int pageSize = 20);
 
     Task<ApiResponse<StockMovementDto>> AdjustStockAsync(AdjustStockRequest request, int userId = 1);
+
+    Task<ApiResponse<System.Collections.Generic.IEnumerable<ForecastItemDto>>> GetForecastingAsync(int daysHistory = 30);
+    Task<ApiResponse<bool>> GenerateDraftImportsFromForecastAsync(System.Collections.Generic.List<ForecastItemDto> items, int userId = 1);
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Munchify.DAL.Data;
@@ -33,6 +34,26 @@ namespace Munchify.DAL.Repository
                     .ThenInclude(d => d.Product)
                         .ThenInclude(p => p.Unit)
                 .FirstOrDefaultAsync(i => i.ImportId == id);
+        }
+
+        public async Task<Dictionary<int, int>> GetPendingImportQuantitiesAsync()
+        {
+            var pendingQuantities = await _context.StockImportDetails
+                .Where(d => d.Import.Status == "DRAFT" || d.Import.Status == "PENDING")
+                .GroupBy(d => d.ProductId)
+                .Select(g => new { ProductId = g.Key, TotalQty = g.Sum(d => d.Quantity) })
+                .ToDictionaryAsync(x => x.ProductId, x => x.TotalQty);
+
+            return pendingQuantities;
+        }
+
+        public async Task<decimal?> GetLatestImportPriceAsync(int productId)
+        {
+            return await _context.StockImportDetails
+                .Where(d => d.ProductId == productId)
+                .OrderByDescending(d => d.ImportId)
+                .Select(d => (decimal?)d.ImportPrice)
+                .FirstOrDefaultAsync();
         }
     }
 }

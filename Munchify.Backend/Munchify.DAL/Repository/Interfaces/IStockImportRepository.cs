@@ -8,5 +8,7 @@ namespace Munchify.DAL.Repository.Interfaces
     {
         Task<IEnumerable<StockImport>> GetAllWithDetailsAsync();
         Task<StockImport?> GetByIdWithDetailsAsync(int id);
+        Task<Dictionary<int, int>> GetPendingImportQuantitiesAsync();
+        Task<decimal?> GetLatestImportPriceAsync(int productId);
     }
 }
