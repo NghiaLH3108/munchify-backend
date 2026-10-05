@@ -9,4 +9,5 @@ public class ComboItemDto
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public string UnitName { get; set; } = null!;
+    public int ComponentStockQuantity { get; set; }
 }
