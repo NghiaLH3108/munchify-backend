@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,32 @@ public class InventoryController : ControllerBase
         int userId = 1; 
         
         var result = await _inventoryService.AdjustStockAsync(request, userId);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpGet("api/inventory/forecasting")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<ForecastItemDto>>>> GetForecasting([FromQuery] int daysHistory = 30)
+    {
+        var result = await _inventoryService.GetForecastingAsync(daysHistory);
+        return Ok(result);
+    }
+
+    [HttpPost("api/stock-imports/generate-from-forecast")]
+    public async Task<ActionResult<ApiResponse<bool>>> GenerateDraftImportsFromForecast([FromBody] List<ForecastItemDto> items)
+    {
+        if (items == null || items.Count == 0)
+        {
+            return BadRequest(ApiResponse<bool>.ErrorResult("Dữ liệu không hợp lệ"));
+        }
+
+        int userId = 1; // Mock user id
+        var result = await _inventoryService.GenerateDraftImportsFromForecastAsync(items, userId);
+        
         if (!result.Success)
         {
             return BadRequest(result);

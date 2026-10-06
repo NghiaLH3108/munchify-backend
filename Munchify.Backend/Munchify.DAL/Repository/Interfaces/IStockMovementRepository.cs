@@ -14,4 +14,6 @@ public interface IStockMovementRepository : IGenericRepository<StockMovement>
         DateTime? to = null, 
         int page = 1, 
         int pageSize = 20);
+
+    Task<System.Collections.Generic.Dictionary<int, double>> GetSalesDataForForecastingAsync(int daysHistory);
 }

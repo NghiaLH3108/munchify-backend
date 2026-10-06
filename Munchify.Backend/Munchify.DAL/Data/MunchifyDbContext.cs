@@ -44,6 +44,8 @@ public partial class MunchifyDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<DamagedExpiredRecord> DamagedExpiredRecords { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -369,6 +371,26 @@ public partial class MunchifyDbContext : DbContext
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<DamagedExpiredRecord>(entity =>
+        {
+            entity.HasKey(e => e.RecordId);
+
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasDefaultValue("PENDING");
+
+            entity.HasOne(d => d.ImportDetail)
+                .WithMany()
+                .HasForeignKey(d => d.ImportDetailId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.Product)
+                .WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         OnModelCreatingPartial(modelBuilder);

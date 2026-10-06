@@ -19,6 +19,7 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
     {
         var query = _context.Products
             .Include(p => p.Category)
+                .ThenInclude(c => c.Suppliers)
             .Include(p => p.Unit)
             .AsQueryable();
 
