@@ -22,6 +22,8 @@ builder.Services.AddScoped(typeof(Munchify.DAL.Repository.Interfaces.IGenericRep
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IStockImportRepository, Munchify.DAL.Repository.StockImportRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IStockImportService, Munchify.BLL.Service.StockImportService>();
 
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ICustomerRepository, Munchify.DAL.Repository.CustomerRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Munchify.BLL.Service.CustomerService>();
 builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiService, Munchify.BLL.Service.InventoryAiService>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDamagedExpiredService, Munchify.BLL.Service.DamagedExpiredService>();
 builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBackgroundService>();
@@ -53,7 +55,6 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection(); // Disabled for local HTTP development
-
 app.UseCors("AllowAll");
 app.UseStaticFiles();
 
