@@ -14,5 +14,7 @@ namespace Munchify.DAL.DTOs.StockImports
         [Required]
         [Range(0, double.MaxValue, ErrorMessage = "Import price cannot be negative.")]
         public decimal ImportPrice { get; set; }
+
+        public System.DateTime? ExpiryDate { get; set; }
     }
 }
