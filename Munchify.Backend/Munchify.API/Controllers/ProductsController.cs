@@ -79,4 +79,18 @@ public class ProductsController : ControllerBase
 
         return Ok(response);
     }
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ combo kèm thành phần (components) cho Staff POS.
+    /// Dùng để tính toán SavingAmount và kiểm tra tình trạng tồn kho combo.
+    /// </summary>
+    [HttpGet("combos")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<ProductDetailDto>>>> GetCombos(CancellationToken cancellationToken)
+    {
+        var response = await _productService.GetCombosForStaffAsync(cancellationToken);
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
 }

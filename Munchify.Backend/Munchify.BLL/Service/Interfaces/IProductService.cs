@@ -13,4 +13,5 @@ public interface IProductService
     Task<ApiResponse<ProductDetailDto>> CreateProductAsync(ProductRequest request);
     Task<ApiResponse<ProductDetailDto>> UpdateProductAsync(int id, ProductRequest request);
     Task<ApiResponse<bool>> ToggleProductStatusAsync(int id);
+    Task<ApiResponse<IEnumerable<ProductDetailDto>>> GetCombosForStaffAsync(CancellationToken cancellationToken = default);
 }

@@ -64,4 +64,22 @@ public class StockMovementRepository : GenericRepository<StockMovement>, IStockM
             PageSize = pageSize
         };
     }
+
+    public async Task<System.Collections.Generic.Dictionary<int, double>> GetSalesDataForForecastingAsync(int daysHistory)
+    {
+        var fromDate = DateTime.Now.AddDays(-daysHistory);
+        
+        var salesData = await _dbSet
+            .Where(sm => sm.CreatedAt >= fromDate && 
+                        (sm.MovementType == "SALE" || sm.MovementType == "COMBO_SALE"))
+            .GroupBy(sm => sm.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                TotalSold = (double)g.Sum(sm => Math.Abs(sm.Quantity)) // Quantity is typically negative for sales
+            })
+            .ToListAsync();
+
+        return salesData.ToDictionary(x => x.ProductId, x => x.TotalSold);
+    }
 }

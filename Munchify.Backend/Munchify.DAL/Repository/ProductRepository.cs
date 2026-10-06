@@ -19,6 +19,7 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
     {
         return _context.Products
             .Include(p => p.Category)
+                .ThenInclude(c => c.Suppliers)
             .Include(p => p.Unit)
             .AsQueryable();
     }
@@ -44,5 +45,18 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
         }
 
         return await query.ToListAsync();
+    }
+
+    public async Task<IEnumerable<Product>> GetCombosWithComponentsAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Unit)
+            .Include(p => p.ProductComboParentProducts)
+                .ThenInclude(pc => pc.ComponentProduct)
+                    .ThenInclude(cp => cp.Unit)
+            .Where(p => p.IsCombo && p.IsActive)
+            .OrderBy(p => p.ProductName)
+            .ToListAsync(cancellationToken);
     }
 }

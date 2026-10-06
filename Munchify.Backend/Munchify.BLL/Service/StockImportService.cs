@@ -69,7 +69,8 @@ namespace Munchify.BLL.Service
                         ProductId = item.ProductId,
                         Quantity = item.Quantity,
                         ImportPrice = item.ImportPrice,
-                        TotalAmount = detailTotalAmount
+                        TotalAmount = detailTotalAmount,
+                        ExpiryDate = item.ExpiryDate
                     });
                 }
 

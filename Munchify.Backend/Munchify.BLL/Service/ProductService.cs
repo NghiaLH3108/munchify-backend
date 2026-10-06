@@ -105,33 +105,7 @@ public class ProductService : IProductService
                 return ApiResponse<ProductDetailDto>.ErrorResult("Không tìm thấy sản phẩm");
             }
 
-            var detailDto = new ProductDetailDto
-            {
-                ProductId = product.ProductId,
-                ProductCode = product.ProductCode,
-                ProductName = product.ProductName,
-                Price = product.Price,
-                StockQuantity = product.StockQuantity,
-                CategoryId = product.CategoryId,
-                CategoryName = product.Category?.CategoryName ?? string.Empty,
-                UnitId = product.UnitId,
-                UnitName = product.Unit?.UnitName ?? string.Empty,
-                ImageUrl = product.ImageUrl,
-                IsCombo = product.IsCombo,
-                IsActive = product.IsActive,
-                Description = product.Description,
-                MinStockLevel = product.MinStockLevel,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
-                ComboItems = product.ProductComboParentProducts.Select(pc => new ComboItemDto
-                {
-                    ComponentProductId = pc.ComponentProductId,
-                    ComponentProductName = pc.ComponentProduct?.ProductName ?? string.Empty,
-                    Quantity = pc.Quantity,
-                    UnitPrice = pc.ComponentProduct?.Price ?? 0,
-                    UnitName = pc.ComponentProduct?.Unit?.UnitName ?? string.Empty
-                }).ToList()
-            };
+            var detailDto = MapToProductDetailDto(product);
 
             return ApiResponse<ProductDetailDto>.SuccessResult(detailDto);
         }
@@ -140,6 +114,56 @@ public class ProductService : IProductService
             return ApiResponse<ProductDetailDto>.ErrorResult($"Lỗi khi lấy chi tiết sản phẩm: {ex.Message}");
         }
     }
+
+    public async Task<ApiResponse<IEnumerable<ProductDetailDto>>> GetCombosForStaffAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var combos = await _productRepository.GetCombosWithComponentsAsync(cancellationToken);
+
+            var comboDtos = combos.Select(MapToProductDetailDto).ToList();
+
+            return ApiResponse<IEnumerable<ProductDetailDto>>.SuccessResult(comboDtos);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<IEnumerable<ProductDetailDto>>.ErrorResult($"Lỗi khi lấy danh sách combo: {ex.Message}");
+        }
+    }
+
+    private static ProductDetailDto MapToProductDetailDto(Munchify.DAL.Entities.Product p) => new ProductDetailDto
+    {
+        ProductId = p.ProductId,
+        ProductCode = p.ProductCode,
+        ProductName = p.ProductName,
+        Price = p.Price,
+        StockQuantity = p.StockQuantity,
+        CategoryId = p.CategoryId,
+        CategoryName = p.Category?.CategoryName ?? string.Empty,
+        UnitId = p.UnitId,
+        UnitName = p.Unit?.UnitName ?? string.Empty,
+        ImageUrl = p.ImageUrl,
+        IsCombo = p.IsCombo,
+        IsActive = p.IsActive,
+        Description = p.Description,
+        MinStockLevel = p.MinStockLevel,
+        CreatedAt = p.CreatedAt,
+        UpdatedAt = p.UpdatedAt,
+        ComboItems = p.ProductComboParentProducts.Select(pc => new ComboItemDto
+        {
+            ComponentProductId = pc.ComponentProductId,
+            ComponentProductName = pc.ComponentProduct?.ProductName ?? string.Empty,
+            Quantity = pc.Quantity,
+            UnitPrice = pc.ComponentProduct?.Price ?? 0,
+            UnitName = pc.ComponentProduct?.Unit?.UnitName ?? string.Empty,
+            ComponentStockQuantity = pc.ComponentProduct?.StockQuantity ?? 0
+        }).ToList()
+    };
+
     public async Task<ApiResponse<IEnumerable<ProductForStockDto>>> GetProductsForStockAsync(int? supplierId)
     {
         try
