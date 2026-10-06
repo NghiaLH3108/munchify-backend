@@ -10,4 +10,5 @@ public interface IProductRepository : IGenericRepository<Product>
     Task<(IEnumerable<Product> Items, int TotalCount)> GetProductsAsync(ProductFilterParams filter);
     Task<IEnumerable<Product>> GetProductsForStockAsync(int? supplierId);
     Task<Product?> GetProductByIdWithDetailsAsync(int id);
+    Task<IEnumerable<Product>> GetCombosWithComponentsAsync(CancellationToken cancellationToken = default);
 }

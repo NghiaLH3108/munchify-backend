@@ -12,6 +12,7 @@ builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IUserService, Munchif
 
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IUnitOfWork, Munchify.DAL.Repository.UnitOfWork>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICategoryService, Munchify.BLL.Service.CategoryService>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IUnitService, Munchify.BLL.Service.UnitService>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IInventoryService, Munchify.BLL.Service.InventoryService>();
 
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IProductRepository, Munchify.DAL.Repository.ProductRepository>();
@@ -50,8 +51,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Bỏ HttpsRedirection để dùng cổng HTTP cục bộ không bị lỗi CORS/SSL Timeout
-// app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled for local HTTP development
 app.UseCors("AllowAll");
 
 app.UseAuthorization();

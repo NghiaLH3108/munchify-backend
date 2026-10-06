@@ -1,4 +1,4 @@
-﻿# AI Agent & Developer Guidelines: Munchify Backend API
+# AI Agent & Developer Guidelines: Munchify Backend API
 
 ## 1. Document Purpose & Operational Mandate
 

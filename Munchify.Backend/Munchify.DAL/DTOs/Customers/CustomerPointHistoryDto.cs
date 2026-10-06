@@ -1,6 +1,6 @@
 using System;
 
-namespace Munchify.DAL.DTOs.Customer;
+namespace Munchify.DAL.DTOs.Customers;
 
 public class CustomerPointHistoryDto
 {
