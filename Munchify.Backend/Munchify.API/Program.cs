@@ -54,7 +54,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection(); // Disabled for local HTTP development
+// Bỏ HttpsRedirection để dùng cổng HTTP cục bộ không bị lỗi CORS/SSL Timeout
+// app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseStaticFiles();
 
