@@ -429,3 +429,70 @@ UNION ALL SELECT 'OrderDetails', COUNT(*) FROM OrderDetails
 UNION ALL SELECT 'Payments', COUNT(*) FROM Payments
 UNION ALL SELECT 'StockMovements', COUNT(*) FROM StockMovements;
 GO
+
+-- 11.5 SupplierCategories Table
+CREATE TABLE SupplierCategories (
+    SupplierId INT NOT NULL FOREIGN KEY REFERENCES Suppliers(SupplierId),
+    CategoryId INT NOT NULL FOREIGN KEY REFERENCES Categories(CategoryId),
+    PRIMARY KEY (SupplierId, CategoryId)
+);
+
+-- 2.4.5 SupplierCategories (Mock data mapping)
+INSERT INTO SupplierCategories (SupplierId, CategoryId)
+VALUES 
+(1, 1), -- An An supplies Bánh Tráng & Snacks
+(2, 2), -- Sài Gòn supplies Thịt Khô
+(3, 3), -- Tân Bình supplies Nước Đóng Chai
+(4, 4), -- Nông Sản Xanh supplies Nước Pha Chế
+(1, 2); -- An An also supplies Thịt Khô
+
+
+
+USE FnBStoreDB;
+GO
+
+-- 1. Bổ sung cột ExpiryDate vào bảng StockImportDetails có sẵn
+-- (Cột này cho phép NULL nên sẽ không làm lỗi các dữ liệu cũ đã insert trước đó)
+ALTER TABLE StockImportDetails
+ADD ExpiryDate DATETIME2 NULL;
+GO
+
+-- 2. Tạo mới bảng DamagedExpiredRecords
+CREATE TABLE DamagedExpiredRecords (
+    RecordId INT IDENTITY(1,1) PRIMARY KEY,
+    ProductId INT NOT NULL FOREIGN KEY REFERENCES Products(ProductId),
+    ImportDetailId INT NULL FOREIGN KEY REFERENCES StockImportDetails(ImportDetailId),
+    ReportType VARCHAR(20) NOT NULL, -- 'EXPIRED' hoặc 'DAMAGED'
+    Quantity INT NOT NULL,
+    Status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    Reason NVARCHAR(500) NULL,
+    AiAnalysis NVARCHAR(MAX) NULL,
+    ReportedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    ResolvedAt DATETIME2 NULL
+);
+GO
+
+
+ALTER TABLE DamagedExpiredRecords
+ADD CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    ProcessedAt DATETIME2 NULL;
+
+
+-- Cập nhật đồng loạt Giá Nhập = 70% Giá Bán (Giá trị thực tế)
+UPDATE d
+SET d.ImportPrice = p.Price * 0.7,
+    d.TotalAmount = (p.Price * 0.7) * d.Quantity -- Tính lại luôn thành tiền
+FROM StockImportDetails d
+JOIN Products p ON d.ProductId = p.ProductId;
+
+-- Kiểm tra lại kết quả
+SELECT TOP (100) 
+    d.ImportDetailId, 
+    p.ProductName, 
+    p.Price AS SellingPrice, 
+    d.ImportPrice AS CostPrice
+FROM StockImportDetails d
+JOIN Products p ON d.ProductId = p.ProductId
+ORDER BY d.ImportDetailId DESC;
+
+
