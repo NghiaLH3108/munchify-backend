@@ -28,6 +28,12 @@ builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiServi
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDamagedExpiredService, Munchify.BLL.Service.DamagedExpiredService>();
 builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBackgroundService>();
 
+// Orders & Promotions
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IOrderRepository, Munchify.DAL.Repository.OrderRepository>();
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IPromotionRepository, Munchify.DAL.Repository.PromotionRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IOrderService, Munchify.BLL.Service.OrderService>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IPromotionService, Munchify.BLL.Service.PromotionService>();
+
 builder.Services.AddAutoMapper(config => config.AddProfile<Munchify.BLL.Helpers.MappingProfile>());
 
 builder.Services.AddControllers();
