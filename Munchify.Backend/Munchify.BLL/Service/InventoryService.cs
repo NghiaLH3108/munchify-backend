@@ -8,6 +8,7 @@ using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Inventory;
 using Munchify.DAL.Repository.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Munchify.BLL.Service;
 
@@ -103,9 +104,12 @@ public class InventoryService : IInventoryService
         var pendingImports = await _unitOfWork.StockImports.GetPendingImportQuantitiesAsync();
 
         // 2. Fetch all active single products
-        // (Assuming GetProductsAsync returns all products if filter is empty)
-        var productsResponse = await _unitOfWork.Products.GetProductsAsync(new DAL.DTOs.Products.ProductFilterParams { IsCombo = false });
-        var activeProducts = productsResponse.Items.Where(p => p.IsActive).ToList();
+        var activeProducts = await _unitOfWork.Products.GetProductsQuery()
+            .Where(p => !p.IsCombo && p.IsActive)
+            .Include(p => p.Category)
+                .ThenInclude(c => c.Suppliers)
+            .Include(p => p.Unit)
+            .ToListAsync();
 
         var forecastList = new List<ForecastItemDto>();
         int leadTime = 3;

@@ -2,10 +2,12 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Munchify.API.Hubs;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.Data;
 using Munchify.DAL.Entities;
@@ -16,11 +18,7 @@ namespace Munchify.API.BackgroundServices
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ExpiryCheckBackgroundService> _logger;
-        //private readonly TimeSpan _checkInterval = TimeSpan.FromHours(24);
-        //private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
         private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10);
-
-
 
         public ExpiryCheckBackgroundService(IServiceProvider serviceProvider, ILogger<ExpiryCheckBackgroundService> logger)
         {
@@ -56,6 +54,7 @@ namespace Munchify.API.BackgroundServices
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<MunchifyDbContext>();
             var aiService = scope.ServiceProvider.GetRequiredService<IInventoryAiService>();
+            var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<InventoryHub>>();
 
             var thresholdDate = DateTime.Now.AddDays(7); // Check items expiring in 7 days or less
 
@@ -96,7 +95,11 @@ namespace Munchify.API.BackgroundServices
             }
 
             await dbContext.SaveChangesAsync();
-            _logger.LogInformation($"Processed {expiringItems.Count} expiring items to AI check.");
+            
+            // Broadcast real-time event to Flutter frontend
+            await hubContext.Clients.All.SendAsync("ReceiveExpiryAlert", "Phát hiện lô hàng sắp hết hạn cần xử lý!");
+            
+            _logger.LogInformation($"Processed {expiringItems.Count} expiring items to AI check and sent SignalR alert.");
         }
     }
 }

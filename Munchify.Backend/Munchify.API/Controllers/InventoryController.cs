@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Munchify.API.Hubs;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Inventory;
@@ -13,10 +15,12 @@ namespace Munchify.API.Controllers;
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
+    private readonly IHubContext<InventoryHub> _hubContext;
 
-    public InventoryController(IInventoryService inventoryService)
+    public InventoryController(IInventoryService inventoryService, IHubContext<InventoryHub> hubContext)
     {
         _inventoryService = inventoryService;
+        _hubContext = hubContext;
     }
 
     [HttpGet("api/stock-movements")]
@@ -48,6 +52,13 @@ public class InventoryController : ControllerBase
         if (!result.Success)
         {
             return BadRequest(result);
+        }
+
+        // Broadcast Real-time SignalR
+        if (result.Data != null && result.Data.NewQuantity <= 10 && request.QuantityChange < 0)
+        {
+            await _hubContext.Clients.All.SendAsync("ReceiveLowStockWarning", 
+                $"Cảnh báo: Sản phẩm có ID {request.ProductId} sắp cạn kho (chỉ còn {result.Data.NewQuantity}). AI đề xuất nhập thêm!");
         }
 
         return Ok(result);
