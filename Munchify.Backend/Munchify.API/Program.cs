@@ -17,6 +17,7 @@ builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IInventoryService, Mu
 
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IProductRepository, Munchify.DAL.Repository.ProductRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IProductService, Munchify.BLL.Service.ProductService>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IComboService, Munchify.BLL.Service.ComboService>();
 
 builder.Services.AddScoped(typeof(Munchify.DAL.Repository.Interfaces.IGenericRepository<>), typeof(Munchify.DAL.Repository.GenericRepository<>));
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IStockImportRepository, Munchify.DAL.Repository.StockImportRepository>();
@@ -39,13 +40,18 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add SignalR
+builder.Services.AddSignalR();
+
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
     {
-        builder.AllowAnyOrigin()
+        builder.SetIsOriginAllowed(_ => true) // Allow any origin for SignalR
                .AllowAnyMethod()
-               .AllowAnyHeader();
+               .AllowAnyHeader()
+               .AllowCredentials(); // SignalR requires credentials
     });
 });
 
@@ -66,5 +72,6 @@ app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<Munchify.API.Hubs.InventoryHub>("/hubs/inventory");
 
 app.Run();
