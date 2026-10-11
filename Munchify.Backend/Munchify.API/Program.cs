@@ -22,6 +22,10 @@ builder.Services.AddScoped(typeof(Munchify.DAL.Repository.Interfaces.IGenericRep
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IStockImportRepository, Munchify.DAL.Repository.StockImportRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IStockImportService, Munchify.BLL.Service.StockImportService>();
 
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IPromotionRepository, Munchify.DAL.Repository.PromotionRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IPromotionService, Munchify.BLL.Service.PromotionService>();
+
+
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ICustomerRepository, Munchify.DAL.Repository.CustomerRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Munchify.BLL.Service.CustomerService>();
 builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiService, Munchify.BLL.Service.InventoryAiService>();
