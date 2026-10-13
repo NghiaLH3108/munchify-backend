@@ -18,4 +18,14 @@ public class PromotionRepository : GenericRepository<Promotion>, IPromotionRepos
             .Include(p => p.Products)
             .FirstOrDefaultAsync(p => p.PromotionId == id);
     }
+
+    public async Task<bool> ExistsCodeAsync(string code, int? excludeId = null)
+    {
+        var query = _context.Set<Promotion>().AsQueryable();
+        if (excludeId.HasValue)
+        {
+            query = query.Where(p => p.PromotionId != excludeId.Value);
+        }
+        return await query.AnyAsync(p => p.PromotionCode.ToLower() == code.ToLower());
+    }
 }

@@ -73,20 +73,38 @@ public class PromotionService : IPromotionService
     public async Task<ApiResponse<PromotionDetailDto>> CreatePromotionAsync(CreatePromotionRequest request)
     {
         if (request.StartDate.Date < DateTime.Now.Date)
-            return ApiResponse<PromotionDetailDto>.ErrorResult("StartDate cannot be in the past");
+            return ApiResponse<PromotionDetailDto>.ErrorResult("Ngày bắt đầu không được ở trong quá khứ");
 
         if (request.EndDate <= request.StartDate)
-            return ApiResponse<PromotionDetailDto>.ErrorResult("EndDate must be after StartDate");
+            return ApiResponse<PromotionDetailDto>.ErrorResult("Ngày kết thúc phải sau ngày bắt đầu");
 
-        string code = string.IsNullOrWhiteSpace(request.PromotionCode) 
-            ? GenerateRandomCode(8) 
-            : request.PromotionCode;
+        var valError = ValidatePromotionRules(request.DiscountType, request.DiscountValue, request.MinimumOrderAmount);
+        if (valError != null)
+            return ApiResponse<PromotionDetailDto>.ErrorResult(valError);
+
+        string code;
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            code = request.PromotionCode.Trim().ToUpper();
+            bool exists = await _unitOfWork.Promotions.ExistsCodeAsync(code);
+            if (exists)
+            {
+                return ApiResponse<PromotionDetailDto>.ErrorResult($"Mã khuyến mãi '{code}' đã tồn tại trong hệ thống");
+            }
+        }
+        else
+        {
+            do
+            {
+                code = GenerateRandomCode(8);
+            } while (await _unitOfWork.Promotions.ExistsCodeAsync(code));
+        }
 
         var promotion = new Promotion
         {
             PromotionCode = code,
-            PromotionName = request.PromotionName,
-            Description = request.Description,
+            PromotionName = request.PromotionName.Trim(),
+            Description = request.Description?.Trim(),
             DiscountType = request.DiscountType,
             DiscountValue = request.DiscountValue,
             MinimumOrderAmount = request.MinimumOrderAmount,
@@ -99,7 +117,7 @@ public class PromotionService : IPromotionService
 
         if (request.ProductIds != null && request.ProductIds.Any())
         {
-            foreach (var productId in request.ProductIds)
+            foreach (var productId in request.ProductIds.Distinct())
             {
                 var product = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (product != null)
@@ -113,20 +131,24 @@ public class PromotionService : IPromotionService
         await _unitOfWork.CompleteAsync();
 
         var createdDetail = _mapper.Map<PromotionDetailDto>(promotion);
-        return ApiResponse<PromotionDetailDto>.SuccessResult(createdDetail, "Promotion created successfully");
+        return ApiResponse<PromotionDetailDto>.SuccessResult(createdDetail, "Tạo chương trình khuyến mãi thành công");
     }
 
     public async Task<ApiResponse<PromotionDetailDto>> UpdatePromotionAsync(int id, UpdatePromotionRequest request)
     {
         var promotion = await _unitOfWork.Promotions.GetPromotionWithDetailsAsync(id);
         if (promotion == null)
-            return ApiResponse<PromotionDetailDto>.ErrorResult("Promotion not found");
+            return ApiResponse<PromotionDetailDto>.ErrorResult("Không tìm thấy chương trình khuyến mãi");
 
         if (request.EndDate <= request.StartDate)
-            return ApiResponse<PromotionDetailDto>.ErrorResult("EndDate must be after StartDate");
+            return ApiResponse<PromotionDetailDto>.ErrorResult("Ngày kết thúc phải sau ngày bắt đầu");
 
-        promotion.PromotionName = request.PromotionName;
-        promotion.Description = request.Description;
+        var valError = ValidatePromotionRules(request.DiscountType, request.DiscountValue, request.MinimumOrderAmount);
+        if (valError != null)
+            return ApiResponse<PromotionDetailDto>.ErrorResult(valError);
+
+        promotion.PromotionName = request.PromotionName.Trim();
+        promotion.Description = request.Description?.Trim();
         promotion.DiscountType = request.DiscountType;
         promotion.DiscountValue = request.DiscountValue;
         promotion.MinimumOrderAmount = request.MinimumOrderAmount;
@@ -138,7 +160,7 @@ public class PromotionService : IPromotionService
         promotion.Products.Clear();
         if (request.ProductIds != null && request.ProductIds.Any())
         {
-            foreach (var productId in request.ProductIds)
+            foreach (var productId in request.ProductIds.Distinct())
             {
                 var product = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (product != null)
@@ -152,7 +174,37 @@ public class PromotionService : IPromotionService
         await _unitOfWork.CompleteAsync();
 
         var updatedDetail = _mapper.Map<PromotionDetailDto>(promotion);
-        return ApiResponse<PromotionDetailDto>.SuccessResult(updatedDetail, "Promotion updated successfully");
+        return ApiResponse<PromotionDetailDto>.SuccessResult(updatedDetail, "Cập nhật chương trình khuyến mãi thành công");
+    }
+
+    private static string? ValidatePromotionRules(string discountType, decimal discountValue, decimal? minOrder)
+    {
+        if (discountType != "PERCENTAGE" && discountType != "FIXED_AMOUNT")
+        {
+            return "Loại giảm giá không hợp lệ. Chỉ chấp nhận PERCENTAGE hoặc FIXED_AMOUNT";
+        }
+
+        if (discountType == "PERCENTAGE")
+        {
+            if (discountValue <= 0 || discountValue > 100)
+            {
+                return "Giá trị giảm giá theo phần trăm phải nằm trong khoảng từ 1% đến 100%";
+            }
+        }
+        else // FIXED_AMOUNT
+        {
+            if (discountValue <= 0)
+            {
+                return "Số tiền giảm giá phải lớn hơn 0";
+            }
+        }
+
+        if (minOrder.HasValue && minOrder.Value < 0)
+        {
+            return "Giá trị đơn hàng tối thiểu không được là số âm";
+        }
+
+        return null;
     }
 
     public async Task<ApiResponse<bool>> TogglePromotionStatusAsync(int id)
