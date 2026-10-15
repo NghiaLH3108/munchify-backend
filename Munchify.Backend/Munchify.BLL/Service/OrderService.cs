@@ -46,7 +46,7 @@ public class OrderService : IOrderService
 
         var products = await _db.Products
             .Include(p => p.Unit)
-            .Include(p => p.ProductCombos)
+            .Include(p => p.ProductComboParentProducts)
                 .ThenInclude(pc => pc.ComponentProduct)
             .Where(p => productIds.Contains(p.ProductId))
             .ToListAsync(cancellationToken);
@@ -67,7 +67,7 @@ public class OrderService : IOrderService
             if (product.IsCombo)
             {
                 // Combo: check each component
-                foreach (var combo in product.ProductCombos)
+                foreach (var combo in product.ProductComboParentProducts)
                 {
                     var needed = combo.Quantity * item.Quantity;
                     if (combo.ComponentProduct.StockQuantity < needed)
@@ -171,32 +171,42 @@ public class OrderService : IOrderService
 
                 if (product.IsCombo)
                 {
-                    foreach (var combo in product.ProductCombos)
+                    foreach (var combo in product.ProductComboParentProducts)
                     {
                         var deduct = combo.Quantity * item.Quantity;
+                        var prevQty = combo.ComponentProduct.StockQuantity;
                         combo.ComponentProduct.StockQuantity -= deduct;
                         _db.StockMovements.Add(new StockMovement
                         {
-                            ProductId    = combo.ComponentProductId,
-                            MovementType = "COMBO_SALE",
-                            Quantity     = -deduct,
-                            UserId       = staffId,
-                            Note         = $"Bán combo {product.ProductName} [ORD #{order.OrderCode}]",
-                            CreatedAt    = DateTime.Now,
+                            ProductId        = combo.ComponentProductId,
+                            MovementType     = "COMBO_SALE",
+                            Quantity         = -deduct,
+                            PreviousQuantity = prevQty,
+                            NewQuantity      = combo.ComponentProduct.StockQuantity,
+                            ReferenceType    = "ORDER",
+                            ReferenceId      = order.OrderId,
+                            UserId           = staffId,
+                            Reason           = $"Bán combo {product.ProductName} [ORD #{order.OrderCode}]",
+                            CreatedAt        = DateTime.Now,
                         });
                     }
                 }
                 else
                 {
+                    var prevQty = product.StockQuantity;
                     product.StockQuantity -= item.Quantity;
                     _db.StockMovements.Add(new StockMovement
                     {
-                        ProductId    = item.ProductId,
-                        MovementType = "SALE",
-                        Quantity     = -item.Quantity,
-                        UserId       = staffId,
-                        Note         = $"Bán hàng [ORD #{order.OrderCode}]",
-                        CreatedAt    = DateTime.Now,
+                        ProductId        = item.ProductId,
+                        MovementType     = "SALE",
+                        Quantity         = -item.Quantity,
+                        PreviousQuantity = prevQty,
+                        NewQuantity      = product.StockQuantity,
+                        ReferenceType    = "ORDER",
+                        ReferenceId      = order.OrderId,
+                        UserId           = staffId,
+                        Reason           = $"Bán hàng [ORD #{order.OrderCode}]",
+                        CreatedAt        = DateTime.Now,
                     });
                 }
             }
