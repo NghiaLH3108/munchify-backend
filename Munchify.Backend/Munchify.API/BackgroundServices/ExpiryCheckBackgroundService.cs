@@ -60,6 +60,8 @@ namespace Munchify.API.BackgroundServices
 
             var expiringItems = await dbContext.StockImportDetails
                 .Include(d => d.Product)
+                .Include(d => d.Import)
+                .Where(d => d.Import.Status == "COMPLETED")
                 .Where(d => d.ExpiryDate != null && d.ExpiryDate <= thresholdDate && d.Quantity > 0)
                 .Where(d => !dbContext.DamagedExpiredRecords.Any(r => r.ImportDetailId == d.ImportDetailId && (r.Status == "PENDING" || r.Status == "APPROVED")))
                 .ToListAsync();

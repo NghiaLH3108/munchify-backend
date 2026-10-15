@@ -21,12 +21,12 @@ namespace Munchify.BLL.Service
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync()
+        public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync(string? status = null)
         {
             var response = new ApiResponse<IEnumerable<DamagedExpiredRecordDto>>();
             try
             {
-                var records = await _unitOfWork.DamagedExpiredRecords.GetPendingRecordsWithDetailsAsync();
+                var records = await _unitOfWork.DamagedExpiredRecords.GetPendingRecordsWithDetailsAsync(status);
                 
                 var dtos = records.Select(r => new DamagedExpiredRecordDto
                 {

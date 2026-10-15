@@ -21,11 +21,12 @@ namespace Munchify.API.Controllers
             _service = service;
         }
 
+        [HttpGet]
         [HttpGet("pending")]
         //[Authorize(Roles = "ADMIN,STAFF")]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>>> GetPendingRecords()
+        public async Task<ActionResult<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>>> GetPendingRecords([FromQuery] string? status = null)
         {
-            var response = await _service.GetPendingRecordsAsync();
+            var response = await _service.GetPendingRecordsAsync(status);
             if (!response.Success)
             {
                 return BadRequest(response);
