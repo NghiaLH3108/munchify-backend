@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Products;
@@ -13,11 +14,35 @@ public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IProductRepository _productRepository;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ProductService(IUnitOfWork unitOfWork, IProductRepository productRepository)
+    public ProductService(
+        IUnitOfWork unitOfWork, 
+        IProductRepository productRepository,
+        IHttpContextAccessor httpContextAccessor)
     {
         _unitOfWork = unitOfWork;
         _productRepository = productRepository;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    private string? ResolveImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return imageUrl;
+
+        if (imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+            imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return imageUrl;
+        }
+
+        var request = _httpContextAccessor.HttpContext?.Request;
+        if (request == null)
+            return imageUrl;
+
+        var path = imageUrl.StartsWith("/") ? imageUrl : $"/{imageUrl}";
+        return $"{request.Scheme}://{request.Host}{request.PathBase}{path}";
     }
 
     public async Task<ApiResponse<PagedResult<ProductDto>>> GetProductsAsync(ProductFilterParams filter)
@@ -72,7 +97,7 @@ public class ProductService : IProductService
                 CategoryName = p.Category?.CategoryName ?? string.Empty,
                 UnitId = p.UnitId,
                 UnitName = p.Unit?.UnitName ?? string.Empty,
-                ImageUrl = p.ImageUrl,
+                ImageUrl = ResolveImageUrl(p.ImageUrl),
                 IsCombo = p.IsCombo,
                 MinStockLevel = p.MinStockLevel,
                 IsActive = p.IsActive
@@ -135,7 +160,7 @@ public class ProductService : IProductService
         }
     }
 
-    private static ProductDetailDto MapToProductDetailDto(Munchify.DAL.Entities.Product p) => new ProductDetailDto
+    private ProductDetailDto MapToProductDetailDto(Munchify.DAL.Entities.Product p) => new ProductDetailDto
     {
         ProductId = p.ProductId,
         ProductCode = p.ProductCode,
@@ -146,7 +171,7 @@ public class ProductService : IProductService
         CategoryName = p.Category?.CategoryName ?? string.Empty,
         UnitId = p.UnitId,
         UnitName = p.Unit?.UnitName ?? string.Empty,
-        ImageUrl = p.ImageUrl,
+        ImageUrl = ResolveImageUrl(p.ImageUrl),
         IsCombo = p.IsCombo,
         IsActive = p.IsActive,
         Description = p.Description,
