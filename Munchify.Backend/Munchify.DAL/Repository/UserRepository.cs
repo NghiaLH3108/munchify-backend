@@ -18,7 +18,7 @@ public class UserRepository : IUserRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<User>> GetAllStaffAsync(string? role, bool? isActive, int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<User>> GetAllStaffAsync(string? role, bool? isActive, string? searchKeyword = null, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         var query = _context.Users.AsNoTracking().AsQueryable();
 
@@ -30,6 +30,15 @@ public class UserRepository : IUserRepository
         if (isActive.HasValue)
         {
             query = query.Where(u => u.IsActive == isActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchKeyword))
+        {
+            var keyword = searchKeyword.Trim().ToLower();
+            query = query.Where(u => u.FullName.ToLower().Contains(keyword) ||
+                                     u.Username.ToLower().Contains(keyword) ||
+                                     (u.Phone != null && u.Phone.Contains(keyword)) ||
+                                     (u.Email != null && u.Email.ToLower().Contains(keyword)));
         }
 
         return await query
@@ -39,7 +48,7 @@ public class UserRepository : IUserRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<int> GetTotalStaffCountAsync(string? role, bool? isActive, CancellationToken cancellationToken = default)
+    public async Task<int> GetTotalStaffCountAsync(string? role, bool? isActive, string? searchKeyword = null, CancellationToken cancellationToken = default)
     {
         var query = _context.Users.AsNoTracking().AsQueryable();
 
@@ -51,6 +60,15 @@ public class UserRepository : IUserRepository
         if (isActive.HasValue)
         {
             query = query.Where(u => u.IsActive == isActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchKeyword))
+        {
+            var keyword = searchKeyword.Trim().ToLower();
+            query = query.Where(u => u.FullName.ToLower().Contains(keyword) ||
+                                     u.Username.ToLower().Contains(keyword) ||
+                                     (u.Phone != null && u.Phone.Contains(keyword)) ||
+                                     (u.Email != null && u.Email.ToLower().Contains(keyword)));
         }
 
         return await query.CountAsync(cancellationToken);

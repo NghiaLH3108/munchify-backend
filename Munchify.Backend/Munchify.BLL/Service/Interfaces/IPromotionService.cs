@@ -8,19 +8,13 @@ namespace Munchify.BLL.Service.Interfaces;
 
 public interface IPromotionService
 {
+    Task<ApiResponse<PagedResult<PromotionDto>>> GetAllPromotionsAsync(PromotionFilterParams filterParams);
+    Task<ApiResponse<List<PromotionDto>>> GetAllPromotionsListAsync(CancellationToken cancellationToken = default);
+    Task<ApiResponse<PromotionDetailDto>> GetPromotionByIdAsync(int id);
+    Task<ApiResponse<PromotionDetailDto>> CreatePromotionAsync(CreatePromotionRequest request);
+    Task<ApiResponse<PromotionDetailDto>> UpdatePromotionAsync(int id, UpdatePromotionRequest request);
+    Task<ApiResponse<bool>> TogglePromotionStatusAsync(int id);
     Task<ApiResponse<ApplyPromotionResponse>> ApplyPromotionAsync(
         ApplyPromotionRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<ApiResponse<List<PromotionDto>>> GetAllPromotionsAsync(
-        CancellationToken cancellationToken = default);
-
-    Task<ApiResponse<PromotionDto>> CreatePromotionAsync(
-        SavePromotionRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<ApiResponse<PromotionDto>> UpdatePromotionAsync(
-        int id,
-        SavePromotionRequest request,
         CancellationToken cancellationToken = default);
 }

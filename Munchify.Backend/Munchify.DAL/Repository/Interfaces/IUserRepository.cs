@@ -7,8 +7,8 @@ namespace Munchify.DAL.Repository.Interfaces;
 
 public interface IUserRepository
 {
-    Task<IEnumerable<User>> GetAllStaffAsync(string? role, bool? isActive, int page, int pageSize, CancellationToken cancellationToken = default);
-    Task<int> GetTotalStaffCountAsync(string? role, bool? isActive, CancellationToken cancellationToken = default);
+    Task<IEnumerable<User>> GetAllStaffAsync(string? role, bool? isActive, string? searchKeyword = null, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default);
+    Task<int> GetTotalStaffCountAsync(string? role, bool? isActive, string? searchKeyword = null, CancellationToken cancellationToken = default);
     Task<User?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default);
     Task<bool> ExistsUsernameAsync(string username, CancellationToken cancellationToken = default);

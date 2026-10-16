@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -8,13 +9,27 @@ using Munchify.DAL.Repository.Interfaces;
 
 namespace Munchify.DAL.Repository;
 
-public class PromotionRepository : IPromotionRepository
+public class PromotionRepository : GenericRepository<Promotion>, IPromotionRepository
 {
-    private readonly MunchifyDbContext _context;
-
-    public PromotionRepository(MunchifyDbContext context)
+    public PromotionRepository(MunchifyDbContext context) : base(context)
     {
-        _context = context;
+    }
+
+    public async Task<Promotion?> GetPromotionWithDetailsAsync(int id)
+    {
+        return await _context.Set<Promotion>()
+            .Include(p => p.Products)
+            .FirstOrDefaultAsync(p => p.PromotionId == id);
+    }
+
+    public async Task<bool> ExistsCodeAsync(string code, int? excludeId = null)
+    {
+        var query = _context.Set<Promotion>().AsQueryable();
+        if (excludeId.HasValue)
+        {
+            query = query.Where(p => p.PromotionId != excludeId.Value);
+        }
+        return await query.AnyAsync(p => p.PromotionCode.ToLower() == code.ToLower());
     }
 
     public async Task<Promotion?> GetByCodeAsync(string promotionCode, CancellationToken cancellationToken = default)
@@ -25,7 +40,7 @@ public class PromotionRepository : IPromotionRepository
                 cancellationToken);
     }
 
-    public async Task<List<Promotion>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<List<Promotion>> GetAllListAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Promotions
             .OrderByDescending(p => p.CreatedAt)
