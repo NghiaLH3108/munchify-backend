@@ -14,6 +14,8 @@ public interface IUnitOfWork : IDisposable
     IDamagedExpiredRecordRepository DamagedExpiredRecords { get; }
     IStockImportRepository StockImports { get; }
     ISupplierRepository Suppliers { get; }
+    IOrderRepository Orders { get; }
+    IPromotionRepository Promotions { get; }
     
     Task<int> CompleteAsync(CancellationToken cancellationToken = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
