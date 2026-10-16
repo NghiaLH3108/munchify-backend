@@ -7,7 +7,6 @@ using Munchify.DAL.Entities;
 using Munchify.DAL.Repository.Interfaces;
 
 namespace Munchify.BLL.Service;
-
 public class CustomerService : ICustomerService
 {
     private readonly ICustomerRepository _customerRepository;
