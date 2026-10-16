@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Munchify.DAL.Data;
@@ -27,5 +30,20 @@ public class PromotionRepository : GenericRepository<Promotion>, IPromotionRepos
             query = query.Where(p => p.PromotionId != excludeId.Value);
         }
         return await query.AnyAsync(p => p.PromotionCode.ToLower() == code.ToLower());
+    }
+
+    public async Task<Promotion?> GetByCodeAsync(string promotionCode, CancellationToken cancellationToken = default)
+    {
+        return await _context.Promotions
+            .FirstOrDefaultAsync(
+                p => p.PromotionCode.ToUpper() == promotionCode.ToUpper(),
+                cancellationToken);
+    }
+
+    public async Task<List<Promotion>> GetAllListAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Promotions
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 }

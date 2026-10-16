@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Munchify.BLL.Service.Interfaces;
@@ -228,5 +229,50 @@ public class PromotionService : IPromotionService
         var random = new Random();
         return new string(Enumerable.Repeat(chars, length)
             .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+    // ─── Apply promotion (POS) ─────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<ApplyPromotionResponse>> ApplyPromotionAsync(
+        ApplyPromotionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var promo = await _unitOfWork.Promotions.GetByCodeAsync(request.PromotionCode, cancellationToken);
+
+        if (promo == null)
+            return ApiResponse<ApplyPromotionResponse>.ErrorResult("Mã khuyến mãi không tồn tại.");
+
+        if (!promo.IsActive)
+            return ApiResponse<ApplyPromotionResponse>.ErrorResult("Mã khuyến mãi đã bị vô hiệu hóa.");
+
+        if (DateTime.Now < promo.StartDate || DateTime.Now > promo.EndDate)
+            return ApiResponse<ApplyPromotionResponse>.ErrorResult(
+                $"Mã khuyến mãi chỉ có hiệu lực từ {promo.StartDate:dd/MM/yyyy} đến {promo.EndDate:dd/MM/yyyy}.");
+
+        if (promo.MinimumOrderAmount.HasValue && request.Subtotal < promo.MinimumOrderAmount.Value)
+            return ApiResponse<ApplyPromotionResponse>.ErrorResult(
+                $"Đơn hàng tối thiểu {promo.MinimumOrderAmount:N0}₫ để áp dụng mã này.");
+
+        decimal discountAmount = promo.DiscountType == "PERCENTAGE"
+            ? Math.Min(request.Subtotal * promo.DiscountValue / 100m, request.Subtotal)
+            : Math.Min(promo.DiscountValue, request.Subtotal);
+
+        return ApiResponse<ApplyPromotionResponse>.SuccessResult(new ApplyPromotionResponse
+        {
+            PromotionCode  = promo.PromotionCode,
+            PromotionName  = promo.PromotionName,
+            DiscountType   = promo.DiscountType,
+            DiscountValue  = promo.DiscountValue,
+            DiscountAmount = discountAmount,
+        });
+    }
+
+    // ─── List all (POS / Non-paged) ──────────────────────────────────────────
+
+    public async Task<ApiResponse<List<PromotionDto>>> GetAllPromotionsListAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var promos = await _unitOfWork.Promotions.GetAllListAsync(cancellationToken);
+        var dtoList = _mapper.Map<List<PromotionDto>>(promos);
+        return ApiResponse<List<PromotionDto>>.SuccessResult(dtoList);
     }
 }
