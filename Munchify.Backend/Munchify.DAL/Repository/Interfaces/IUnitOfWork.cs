@@ -13,6 +13,8 @@ public interface IUnitOfWork : IDisposable
     IProductRepository Products { get; }
     IDamagedExpiredRecordRepository DamagedExpiredRecords { get; }
     IStockImportRepository StockImports { get; }
+    IOrderRepository Orders { get; }
+    IPromotionRepository Promotions { get; }
     
     Task<int> CompleteAsync(CancellationToken cancellationToken = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
