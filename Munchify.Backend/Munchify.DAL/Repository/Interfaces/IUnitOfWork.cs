@@ -13,6 +13,7 @@ public interface IUnitOfWork : IDisposable
     IProductRepository Products { get; }
     IDamagedExpiredRecordRepository DamagedExpiredRecords { get; }
     IStockImportRepository StockImports { get; }
+    ISupplierRepository Suppliers { get; }
     IOrderRepository Orders { get; }
     IPromotionRepository Promotions { get; }
     
