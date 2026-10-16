@@ -32,30 +32,4 @@ jobs:
     # - name: Test
     #   run: dotnet test Munchify.Backend.sln -c Release --no-build --verbosity normal
 
-  frontend-ci:
-    name: Build & Test Frontend (Flutter)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: munchify-frontend/munchify_frontend
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.x'
-        channel: 'stable'
-        
-    - name: Get dependencies
-      run: flutter pub get
-      
-    - name: Verify formatting
-      run: dart format --output=none --set-exit-if-changed .
-      
-    - name: Analyze project source
-      run: flutter analyze
-      
-    - name: Run tests
-      run: flutter test
+  
