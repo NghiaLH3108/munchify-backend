@@ -1,7 +1,9 @@
+using System;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Munchify.BLL.Service;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Orders;
@@ -19,6 +21,22 @@ public class OrdersController : ControllerBase
     }
 
     /// <summary>
+    /// Helper lấy userId từ JWT claims (NameIdentifier / sub), fallback an toàn về 1 nếu chưa auth hoặc claim không hợp lệ.
+    /// </summary>
+    private int GetCurrentUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)
+                 ?? User.FindFirst("sub");
+
+        if (claim != null && int.TryParse(claim.Value, out var userId) && userId > 0)
+        {
+            return userId;
+        }
+
+        return 1;
+    }
+
+    /// <summary>
     /// POST /api/orders – Tạo đơn hàng mới (Checkout).
     /// Lấy staffId từ JWT claims (sub / nameidentifier).
     /// </summary>
@@ -30,17 +48,29 @@ public class OrdersController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<OrderResponse>.ErrorResult("Dữ liệu không hợp lệ."));
 
-        // Lấy staffId từ JWT – fallback về 1 khi chưa có auth
-        var staffIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? User.FindFirstValue("sub");
-        int staffId = int.TryParse(staffIdClaim, out var id) ? id : 1;
+        int staffId = GetCurrentUserId();
 
-        var response = await _orderService.CreateOrderAsync(request, staffId, cancellationToken);
+        try
+        {
+            var response = await _orderService.CreateOrderAsync(request, staffId, cancellationToken);
 
-        if (!response.Success)
-            return BadRequest(response);
+            if (!response.Success)
+                return BadRequest(response);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ApiResponse<OrderResponse>.ErrorResult(ex.Message));
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ApiResponse<OrderResponse>.NotFoundResult(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<OrderResponse>.ErrorResult($"Lỗi xử lý đơn hàng: {ex.Message}"));
+        }
     }
 
     /// <summary>

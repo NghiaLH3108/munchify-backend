@@ -41,6 +41,11 @@ public class OrderService : IOrderService
         int staffId,
         CancellationToken cancellationToken = default)
     {
+        // ── 0. Validate staff ────────────────────────────────────────────────
+        var staff = await _db.Users.FindAsync(new object[] { staffId }, cancellationToken);
+        if (staff == null || !staff.IsActive)
+            throw new ValidationException("Tài khoản nhân viên không tồn tại hoặc đã bị vô hiệu hóa.");
+
         // ── 1. Validate and fetch products ────────────────────────────────────
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
 
@@ -93,22 +98,70 @@ public class OrderService : IOrderService
         decimal discountAmount = 0m;
         if (!string.IsNullOrWhiteSpace(request.PromotionCode))
         {
-            var promo = await _unitOfWork.Promotions.GetByCodeAsync(
-                request.PromotionCode, cancellationToken);
+            var promo = await _db.Promotions
+                .Include(p => p.Products)
+                .FirstOrDefaultAsync(
+                    p => p.PromotionCode.ToUpper() == request.PromotionCode.ToUpper(),
+                    cancellationToken);
 
             if (promo != null && promo.IsActive &&
                 promo.StartDate <= DateTime.Now && DateTime.Now <= promo.EndDate &&
                 (promo.MinimumOrderAmount == null || subtotal >= promo.MinimumOrderAmount))
             {
-                discountAmount = promo.DiscountType == "PERCENTAGE"
-                    ? Math.Min(subtotal * promo.DiscountValue / 100m, subtotal)
-                    : Math.Min(promo.DiscountValue, subtotal);
+                if (promo.Products != null && promo.Products.Any())
+                {
+                    var promoProductIds = promo.Products.Select(p => p.ProductId).ToHashSet();
+                    decimal applicableAmount = request.Items
+                        .Where(item => promoProductIds.Contains(item.ProductId))
+                        .Sum(item =>
+                        {
+                            var p = products.First(x => x.ProductId == item.ProductId);
+                            return p.Price * item.Quantity;
+                        });
+
+                    if (applicableAmount > 0)
+                    {
+                        discountAmount = string.Equals(promo.DiscountType, "PERCENTAGE", StringComparison.OrdinalIgnoreCase)
+                            ? Math.Min(applicableAmount * promo.DiscountValue / 100m, applicableAmount)
+                            : Math.Min(promo.DiscountValue, applicableAmount);
+                    }
+                    else
+                    {
+                        discountAmount = 0m;
+                    }
+                }
+                else
+                {
+                    discountAmount = string.Equals(promo.DiscountType, "PERCENTAGE", StringComparison.OrdinalIgnoreCase)
+                        ? Math.Min(subtotal * promo.DiscountValue / 100m, subtotal)
+                        : Math.Min(promo.DiscountValue, subtotal);
+                }
             }
         }
 
-        decimal pointsDiscountAmount = request.PointsToRedeem * 1000m;
-        decimal totalAmount = Math.Max(0, subtotal - discountAmount - pointsDiscountAmount);
-        int pointsEarned = (int)(totalAmount / 100000m);
+        Customer? customer = null;
+        if (request.PointsToRedeem > 0)
+        {
+            if (!request.CustomerId.HasValue)
+                throw new ValidationException("Khách vãng lai không thể quy đổi điểm tích lũy.");
+        }
+
+        if (request.CustomerId.HasValue)
+        {
+            customer = await _db.Customers.FindAsync(new object[] { request.CustomerId.Value }, cancellationToken);
+            if (customer == null)
+                throw new NotFoundException("Không tìm thấy thông tin khách hàng.");
+
+            if (request.PointsToRedeem > 0 && customer.LoyaltyPoints < request.PointsToRedeem)
+                throw new ValidationException($"Khách hàng không đủ điểm tích lũy. Điểm hiện tại: {customer.LoyaltyPoints}, yêu cầu đổi: {request.PointsToRedeem}.");
+        }
+
+        decimal amountAfterVoucher = Math.Max(0m, subtotal - discountAmount);
+        int maxPointsNeeded = (int)Math.Ceiling(amountAfterVoucher / 100m);
+        int actualPointsRedeemed = Math.Max(0, Math.Min(request.PointsToRedeem, maxPointsNeeded));
+        decimal pointsDiscountAmount = actualPointsRedeemed * 100m;
+        decimal totalAmount = Math.Max(0m, amountAfterVoucher - pointsDiscountAmount);
+        int pointsEarned = customer != null ? (int)(totalAmount / 10000m) : 0;
 
         // ── 4-7. Atomic transaction ───────────────────────────────────────────
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
@@ -124,7 +177,7 @@ public class OrderService : IOrderService
                 Subtotal      = subtotal,
                 DiscountAmount = discountAmount,
                 TotalAmount   = totalAmount,
-                PointsRedeemed = request.PointsToRedeem,
+                PointsRedeemed = actualPointsRedeemed,
                 PointsEarned  = pointsEarned,
                 OrderStatus   = "COMPLETED",
                 PaymentStatus = "PAID",
@@ -212,16 +265,10 @@ public class OrderService : IOrderService
             }
 
             // Update loyalty points
-            if (request.CustomerId.HasValue)
+            if (customer != null)
             {
-                var customer = await _db.Customers.FindAsync(
-                    new object[] { request.CustomerId.Value }, cancellationToken);
-
-                if (customer != null)
-                {
-                    customer.LoyaltyPoints =
-                        customer.LoyaltyPoints - request.PointsToRedeem + pointsEarned;
-                }
+                customer.LoyaltyPoints =
+                    customer.LoyaltyPoints - actualPointsRedeemed + pointsEarned;
             }
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -304,4 +351,14 @@ public class OrderService : IOrderService
             TotalAmount    = d.TotalAmount,
         }).ToList(),
     };
+}
+
+public class ValidationException : Exception
+{
+    public ValidationException(string message) : base(message) { }
+}
+
+public class NotFoundException : Exception
+{
+    public NotFoundException(string message) : base(message) { }
 }
