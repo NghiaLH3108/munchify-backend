@@ -27,6 +27,9 @@ builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IStockImportService, 
 
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ICustomerRepository, Munchify.DAL.Repository.CustomerRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Munchify.BLL.Service.CustomerService>();
+
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ISupplierRepository, Munchify.DAL.Repository.SupplierRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ISupplierService, Munchify.BLL.Service.SupplierService>();
 builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiService, Munchify.BLL.Service.InventoryAiService>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDamagedExpiredService, Munchify.BLL.Service.DamagedExpiredService>();
 builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBackgroundService>();

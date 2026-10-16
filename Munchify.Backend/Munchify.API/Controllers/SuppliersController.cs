@@ -1,35 +1,98 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Munchify.DAL.Data;
-using Munchify.DAL.Entities;
 using System.Threading.Tasks;
-using System.Linq;
+using Microsoft.AspNetCore.Mvc;
+using Munchify.BLL.Service.Interfaces;
+using Munchify.DAL.DTOs.Common;
+using Munchify.DAL.DTOs.Suppliers;
 
-namespace Munchify.API.Controllers
+namespace Munchify.API.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class SuppliersController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class SuppliersController : ControllerBase
+    private readonly ISupplierService _supplierService;
+
+    public SuppliersController(ISupplierService supplierService)
     {
-        private readonly MunchifyDbContext _context;
+        _supplierService = supplierService;
+    }
 
-        public SuppliersController(MunchifyDbContext context)
+    /// <summary>
+    /// View Supplier List - Lấy danh sách nhà cung cấp (hỗ trợ tìm kiếm & lọc theo trạng thái)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetSuppliers([FromQuery] string? search, [FromQuery] bool? isActive)
+    {
+        var response = await _supplierService.GetSuppliersAsync(search, isActive);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Lấy thông tin chi tiết của 1 nhà cung cấp theo Id
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetSupplierById(int id)
+    {
+        var response = await _supplierService.GetSupplierByIdAsync(id);
+        if (!response.Success)
         {
-            _context = context;
+            return NotFound(response);
+        }
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Add Supplier - Thêm nhà cung cấp mới
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CreateSupplier([FromBody] SaveSupplierRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ApiResponse<SupplierDto>.ErrorResult("Dữ liệu đầu vào không hợp lệ."));
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetSuppliers()
+        var response = await _supplierService.CreateSupplierAsync(request);
+        if (!response.Success)
         {
-            var suppliers = await _context.Suppliers.Select(s => new {
-                s.SupplierId,
-                s.SupplierName,
-                s.ContactName,
-                s.Phone,
-                s.Address,
-                s.IsActive
-            }).ToListAsync();
-            return Ok(new { data = suppliers });
+            return BadRequest(response);
         }
+
+        return CreatedAtAction(nameof(GetSupplierById), new { id = response.Data?.SupplierId }, response);
+    }
+
+    /// <summary>
+    /// Update Supplier - Cập nhật thông tin nhà cung cấp
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateSupplier(int id, [FromBody] SaveSupplierRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ApiResponse<SupplierDto>.ErrorResult("Dữ liệu đầu vào không hợp lệ."));
+        }
+
+        var response = await _supplierService.UpdateSupplierAsync(id, request);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Delete Supplier - Xóa mềm nhà cung cấp (IsActive = false)
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteSupplier(int id)
+    {
+        var response = await _supplierService.DeleteSupplierAsync(id);
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
     }
 }
