@@ -17,6 +17,8 @@ public class OrderResponse
     public int PointsRedeemed { get; set; }
     public string OrderStatus { get; set; } = string.Empty;
     public string? CustomerName { get; set; }
+    public decimal? CashGiven { get; set; }
+    public decimal? ChangeAmount { get; set; }
     public PaymentDto Payment { get; set; } = new();
     public List<OrderDetailDto> OrderDetails { get; set; } = new();
     public DateTime CreatedAt { get; set; }

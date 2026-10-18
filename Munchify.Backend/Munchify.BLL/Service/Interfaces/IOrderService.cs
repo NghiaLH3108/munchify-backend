@@ -20,4 +20,9 @@ public interface IOrderService
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tạo thông tin và link ảnh VietQR chuẩn Napas 247 cho thanh toán tại quầy POS.
+    /// </summary>
+    ApiResponse<VietQrInfoDto> GenerateVietQr(decimal amount, string? orderCode = null);
 }

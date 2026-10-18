@@ -9,5 +9,7 @@ public class PaymentDto
     public decimal Amount { get; set; }
     public string PaymentStatus { get; set; } = string.Empty;
     public string? TransactionCode { get; set; }
+    public decimal? CashGiven { get; set; }
+    public decimal? ChangeAmount { get; set; }
     public DateTime? PaidAt { get; set; }
 }
