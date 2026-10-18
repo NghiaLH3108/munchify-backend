@@ -15,18 +15,25 @@ namespace Munchify.BLL.Service
     public class DamagedExpiredService : IDamagedExpiredService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IEmailService _emailService;
+        private readonly Munchify.DAL.Repository.Interfaces.IUserRepository _userRepository;
 
-        public DamagedExpiredService(IUnitOfWork unitOfWork)
+        public DamagedExpiredService(
+            IUnitOfWork unitOfWork, 
+            IEmailService emailService,
+            Munchify.DAL.Repository.Interfaces.IUserRepository userRepository)
         {
             _unitOfWork = unitOfWork;
+            _emailService = emailService;
+            _userRepository = userRepository;
         }
 
-        public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync()
+        public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync(string? status = null)
         {
             var response = new ApiResponse<IEnumerable<DamagedExpiredRecordDto>>();
             try
             {
-                var records = await _unitOfWork.DamagedExpiredRecords.GetPendingRecordsWithDetailsAsync();
+                var records = await _unitOfWork.DamagedExpiredRecords.GetPendingRecordsWithDetailsAsync(status);
                 
                 var dtos = records.Select(r => new DamagedExpiredRecordDto
                 {
@@ -36,7 +43,9 @@ namespace Munchify.BLL.Service
                     ProductName = r.Product?.ProductName ?? "Unknown",
                     UnitName = r.Product?.Unit?.UnitName ?? "Unknown",
                     Quantity = r.Quantity,
+                    ReportType = r.ReportType,
                     Status = r.Status,
+                    Reason = r.Reason,
                     AiAnalysis = r.AiAnalysis,
                     CreatedAt = r.CreatedAt,
                     ProcessedAt = r.ProcessedAt
@@ -162,6 +171,91 @@ namespace Munchify.BLL.Service
             {
                 response.Success = false;
                 response.Message = "Lỗi khi từ chối.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<DamagedExpiredRecordDto>> CreateStaffReportAsync(StaffReportDamagedExpiredRequest request, int userId)
+        {
+            var response = new ApiResponse<DamagedExpiredRecordDto>();
+            try
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(request.ProductId);
+                if (product == null)
+                {
+                    response.Success = false;
+                    response.Message = "Sản phẩm không tồn tại.";
+                    return response;
+                }
+
+                if (request.Quantity <= 0)
+                {
+                    response.Success = false;
+                    response.Message = "Số lượng báo cáo phải lớn hơn 0.";
+                    return response;
+                }
+
+                if (request.Quantity > product.StockQuantity)
+                {
+                    response.Success = false;
+                    response.Message = $"Số lượng báo cáo ({request.Quantity}) không được vượt quá số lượng tồn kho ({product.StockQuantity}).";
+                    return response;
+                }
+
+                var record = new DamagedExpiredRecord
+                {
+                    ProductId = request.ProductId,
+                    ImportDetailId = null,
+                    Quantity = request.Quantity,
+                    ReportType = request.ReportType.ToUpper(),
+                    Status = "PENDING",
+                    Reason = request.Reason,
+                    AiAnalysis = $"[Staff Báo Cáo] Lý do: {request.Reason}",
+                    CreatedAt = DateTime.Now
+                };
+
+                await _unitOfWork.DamagedExpiredRecords.AddAsync(record);
+                await _unitOfWork.CompleteAsync();
+
+                var unit = product.UnitId > 0 ? await _unitOfWork.Units.GetByIdAsync(product.UnitId) : null;
+                var reporter = userId > 0 ? await _userRepository.GetByIdAsync(userId) : null;
+                string reporterName = reporter?.FullName ?? "Nhân viên POS";
+
+                // Tự động kích hoạt gửi Email cảnh báo cho Admin
+                await _emailService.SendDamagedExpiredAlertAsync(
+                    productName: product.ProductName,
+                    productCode: product.ProductCode,
+                    quantity: record.Quantity,
+                    unitName: unit?.UnitName ?? "Món",
+                    reportType: record.ReportType,
+                    reason: record.Reason ?? "Không có lý do chi tiết",
+                    reporterName: reporterName
+                );
+
+                var dto = new DamagedExpiredRecordDto
+                {
+                    RecordId = record.RecordId,
+                    ImportDetailId = record.ImportDetailId,
+                    ProductId = product.ProductId,
+                    ProductName = product.ProductName,
+                    UnitName = unit?.UnitName ?? "Món",
+                    Quantity = record.Quantity,
+                    ReportType = record.ReportType,
+                    Status = record.Status,
+                    Reason = record.Reason,
+                    AiAnalysis = record.AiAnalysis,
+                    CreatedAt = record.CreatedAt
+                };
+
+                response.Success = true;
+                response.Data = dto;
+                response.Message = "Báo cáo sự cố hàng hóa đã được gửi thành công, đang chờ quản lý phê duyệt.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi gửi báo cáo hàng hư hỏng/hết hạn.";
                 response.Errors = new List<string> { ex.Message };
             }
             return response;

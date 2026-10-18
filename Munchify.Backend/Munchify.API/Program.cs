@@ -35,6 +35,7 @@ builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Mun
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ISupplierRepository, Munchify.DAL.Repository.SupplierRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ISupplierService, Munchify.BLL.Service.SupplierService>();
 builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiService, Munchify.BLL.Service.InventoryAiService>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IEmailService, Munchify.BLL.Service.EmailService>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDamagedExpiredService, Munchify.BLL.Service.DamagedExpiredService>();
 builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBackgroundService>();
 
