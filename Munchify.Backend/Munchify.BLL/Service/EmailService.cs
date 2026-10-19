@@ -1,0 +1,228 @@
+using System;
+using System.Net;
+using System.Net.Mail;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Munchify.BLL.Service.Interfaces;
+using Munchify.DAL.DTOs.Common;
+
+namespace Munchify.BLL.Service
+{
+    public class EmailService : IEmailService
+    {
+        private readonly EmailSettings _settings;
+        private readonly ILogger<EmailService> _logger;
+
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        {
+            _logger = logger;
+            _settings = configuration.GetSection("EmailSettings").Get<EmailSettings>() ?? new EmailSettings();
+        }
+
+        public async Task<bool> SendEmailAsync(string toEmail, string subject, string htmlBody)
+        {
+            if (string.IsNullOrWhiteSpace(_settings.SenderEmail) || string.IsNullOrWhiteSpace(_settings.AppPassword))
+            {
+                _logger.LogWarning("[EmailService] Chưa cấu hình SenderEmail hoặc AppPassword trong appsettings.json. Bỏ qua gửi email.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(toEmail))
+            {
+                _logger.LogWarning("[EmailService] Địa chỉ email nhận rỗng.");
+                return false;
+            }
+
+            try
+            {
+                using var client = new SmtpClient(_settings.SmtpServer, _settings.Port)
+                {
+                    Credentials = new NetworkCredential(_settings.SenderEmail, _settings.AppPassword),
+                    EnableSsl = _settings.EnableSsl
+                };
+
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
+                    Subject = subject,
+                    Body = htmlBody,
+                    IsBodyHtml = true
+                };
+
+                mailMessage.To.Add(toEmail);
+
+                await client.SendMailAsync(mailMessage);
+                _logger.LogInformation("[EmailService] Đã gửi email thành công tới {ToEmail} với tiêu đề: {Subject}", toEmail, subject);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Gặp lỗi khi gửi email qua SMTP: {Message}", ex.Message);
+                return false;
+            }
+        }
+
+        public async Task SendDamagedExpiredAlertAsync(
+            string productName, 
+            string productCode, 
+            int quantity, 
+            string unitName, 
+            string reportType, 
+            string reason, 
+            string reporterName)
+        {
+            var adminEmail = _settings.AdminEmail;
+            if (string.IsNullOrWhiteSpace(adminEmail)) return;
+
+            string typeTitle = reportType == "EXPIRED" ? "HÀNG HẾT HẠN" : "HÀNG HƯ HỎNG / LỖI";
+            string colorHeader = reportType == "EXPIRED" ? "#DC2626" : "#EA580C"; // Đỏ hoặc Cam
+
+            string subject = $"[MUNCHIFY CẢNH BÁO] Sự cố {typeTitle}: {productName} ({productCode})";
+
+            string htmlBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+        .header {{ background-color: {colorHeader}; color: #ffffff; padding: 20px; text-align: center; }}
+        .header h2 {{ margin: 0; font-size: 20px; text-transform: uppercase; }}
+        .content {{ padding: 24px; color: #374151; line-height: 1.6; }}
+        .info-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+        .info-table td {{ padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }}
+        .info-table td.label {{ font-weight: 600; width: 35%; color: #4b5563; }}
+        .badge {{ display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: bold; background: #fee2e2; color: #991b1b; }}
+        .footer {{ padding: 16px; background-color: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h2>⚠️ Báo Cáo Sự Cố Kho Hàng</h2>
+        </div>
+        <div class='content'>
+            <p>Chào Quản trị viên,</p>
+            <p>Nhân viên <b>{reporterName}</b> vừa gửi báo cáo sự cố hàng hóa cần kiểm tra và phê duyệt xử lý:</p>
+            <table class='info-table'>
+                <tr>
+                    <td class='label'>Mã sản phẩm:</td>
+                    <td><b>{productCode}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Tên sản phẩm:</td>
+                    <td><b>{productName}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Phân loại sự cố:</td>
+                    <td><span class='badge'>{typeTitle}</span></td>
+                </tr>
+                <tr>
+                    <td class='label'>Số lượng ảnh hưởng:</td>
+                    <td><b style='color: #dc2626; font-size: 16px;'>{quantity} {unitName}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Lý do ghi nhận:</td>
+                    <td>{reason}</td>
+                </tr>
+                <tr>
+                    <td class='label'>Thời gian báo:</td>
+                    <td>{DateTime.Now:dd/MM/yyyy HH:mm:ss}</td>
+                </tr>
+            </table>
+            <p style='margin-top: 20px;'>Vui lòng đăng nhập vào trang quản trị để xem xét và duyệt phiếu giảm trừ tồn kho.</p>
+        </div>
+        <div class='footer'>
+            Hệ thống quản lý kho Munchify F&B Store &bull; Thông báo tự động
+        </div>
+    </div>
+</body>
+</html>";
+
+            // Gửi email background để không chặn luồng chính
+            _ = Task.Run(async () =>
+            {
+                await SendEmailAsync(adminEmail, subject, htmlBody);
+            });
+        }
+
+        public async Task SendLowStockAlertAsync(
+            string productName, 
+            string productCode, 
+            int currentStock, 
+            int minStock, 
+            string unitName)
+        {
+            var adminEmail = _settings.AdminEmail;
+            if (string.IsNullOrWhiteSpace(adminEmail)) return;
+
+            string statusText = currentStock == 0 ? "CHÁY HÀNG (0 TỒN)" : "SẮP HẾT HÀNG";
+            string colorHeader = currentStock == 0 ? "#DC2626" : "#D97706"; // Đỏ hoặc Vàng Cam
+
+            string subject = $"[MUNCHIFY CẢNH BÁO KHO] {statusText}: {productName} ({productCode})";
+
+            string htmlBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+        .header {{ background-color: {colorHeader}; color: #ffffff; padding: 20px; text-align: center; }}
+        .header h2 {{ margin: 0; font-size: 20px; text-transform: uppercase; }}
+        .content {{ padding: 24px; color: #374151; line-height: 1.6; }}
+        .info-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+        .info-table td {{ padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }}
+        .info-table td.label {{ font-weight: 600; width: 35%; color: #4b5563; }}
+        .footer {{ padding: 16px; background-color: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h2>📦 Cảnh Báo Cạn Kho Hàng</h2>
+        </div>
+        <div class='content'>
+            <p>Chào Quản trị viên,</p>
+            <p>Hệ thống kho phát hiện mặt hàng sau đang có số lượng tồn kho chạm mức báo động:</p>
+            <table class='info-table'>
+                <tr>
+                    <td class='label'>Mã sản phẩm:</td>
+                    <td><b>{productCode}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Tên sản phẩm:</td>
+                    <td><b>{productName}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Tồn kho hiện tại:</td>
+                    <td><b style='color: #dc2626; font-size: 18px;'>{currentStock} {unitName}</b></td>
+                </tr>
+                <tr>
+                    <td class='label'>Mức tối thiểu quy định:</td>
+                    <td>{minStock} {unitName}</td>
+                </tr>
+                <tr>
+                    <td class='label'>Trạng thái:</td>
+                    <td><b>{statusText}</b></td>
+                </tr>
+            </table>
+            <p style='margin-top: 20px;'>Hệ thống khuyến nghị lên kế hoạch nhập hàng sớm để tránh gián đoạn phục vụ khách hàng.</p>
+        </div>
+        <div class='footer'>
+            Hệ thống quản lý kho Munchify F&B Store &bull; Thông báo tự động
+        </div>
+    </div>
+</body>
+</html>";
+
+            _ = Task.Run(async () =>
+            {
+                await SendEmailAsync(adminEmail, subject, htmlBody);
+            });
+        }
+    }
+}

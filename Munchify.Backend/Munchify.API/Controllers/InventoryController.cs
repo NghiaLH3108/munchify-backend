@@ -16,11 +16,19 @@ public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
     private readonly IHubContext<InventoryHub> _hubContext;
+    private readonly IEmailService _emailService;
+    private readonly IProductService _productService;
 
-    public InventoryController(IInventoryService inventoryService, IHubContext<InventoryHub> hubContext)
+    public InventoryController(
+        IInventoryService inventoryService, 
+        IHubContext<InventoryHub> hubContext,
+        IEmailService emailService,
+        IProductService productService)
     {
         _inventoryService = inventoryService;
         _hubContext = hubContext;
+        _emailService = emailService;
+        _productService = productService;
     }
 
     [HttpGet("api/stock-movements")]
@@ -54,11 +62,25 @@ public class InventoryController : ControllerBase
             return BadRequest(result);
         }
 
-        // Broadcast Real-time SignalR
+        // Broadcast Real-time SignalR & Send Low Stock Alert Email
         if (result.Data != null && result.Data.NewQuantity <= 10 && request.QuantityChange < 0)
         {
             await _hubContext.Clients.All.SendAsync("ReceiveLowStockWarning", 
                 $"Cảnh báo: Sản phẩm có ID {request.ProductId} sắp cạn kho (chỉ còn {result.Data.NewQuantity}). AI đề xuất nhập thêm!");
+
+            // Gửi email tự động cho Admin
+            var prodRes = await _productService.GetProductDetailAsync(request.ProductId);
+            if (prodRes.Success && prodRes.Data != null)
+            {
+                var prod = prodRes.Data;
+                await _emailService.SendLowStockAlertAsync(
+                    productName: prod.ProductName,
+                    productCode: prod.ProductCode,
+                    currentStock: result.Data.NewQuantity,
+                    minStock: prod.MinStockLevel,
+                    unitName: prod.UnitName
+                );
+            }
         }
 
         return Ok(result);

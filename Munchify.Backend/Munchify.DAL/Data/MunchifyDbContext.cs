@@ -385,6 +385,7 @@ public partial class MunchifyDbContext : DbContext
             entity.HasOne(d => d.ImportDetail)
                 .WithMany()
                 .HasForeignKey(d => d.ImportDetailId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasOne(d => d.Product)
