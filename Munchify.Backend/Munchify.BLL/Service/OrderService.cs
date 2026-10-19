@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Encodings.Web;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.Data;
 using Munchify.DAL.DTOs.Common;
@@ -27,11 +29,13 @@ public class OrderService : IOrderService
 {
     private readonly MunchifyDbContext _db;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IConfiguration _configuration;
 
-    public OrderService(MunchifyDbContext db, IUnitOfWork unitOfWork)
+    public OrderService(MunchifyDbContext db, IUnitOfWork unitOfWork, IConfiguration configuration)
     {
         _db = db;
         _unitOfWork = unitOfWork;
+        _configuration = configuration;
     }
 
     // ─── CreateOrderAsync ────────────────────────────────────────────────────
@@ -163,6 +167,30 @@ public class OrderService : IOrderService
         decimal totalAmount = Math.Max(0m, amountAfterVoucher - pointsDiscountAmount);
         int pointsEarned = customer != null ? (int)(totalAmount / 10000m) : 0;
 
+        // ── 3.1. Payment method validation & Change calculation ──────────────
+        var validPaymentMethods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "CASH", "QR_CODE"
+        };
+
+        if (!validPaymentMethods.Contains(request.PaymentMethod))
+            throw new ValidationException($"Phương thức thanh toán '{request.PaymentMethod}' không hợp lệ. Chỉ chấp nhận: CASH, QR_CODE.");
+
+        decimal? cashGiven = null;
+        decimal? changeAmount = null;
+
+        if (string.Equals(request.PaymentMethod, "CASH", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!request.CashGiven.HasValue)
+                throw new ValidationException("Vui lòng nhập số tiền khách đưa khi chọn thanh toán tiền mặt.");
+
+            if (request.CashGiven.Value < totalAmount)
+                throw new ValidationException($"Số tiền khách đưa ({request.CashGiven.Value:N0} đ) không đủ để thanh toán ({totalAmount:N0} đ).");
+
+            cashGiven = request.CashGiven.Value;
+            changeAmount = cashGiven.Value - totalAmount;
+        }
+
         // ── 4-7. Atomic transaction ───────────────────────────────────────────
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -207,12 +235,13 @@ public class OrderService : IOrderService
             // Payment
             _db.Payments.Add(new Payment
             {
-                OrderId       = order.OrderId,
-                PaymentMethod = request.PaymentMethod,
-                Amount        = totalAmount,
-                PaymentStatus = "PAID",
-                PaidAt        = DateTime.Now,
-                CreatedAt     = DateTime.Now,
+                OrderId         = order.OrderId,
+                PaymentMethod   = request.PaymentMethod.ToUpper(),
+                Amount          = totalAmount,
+                PaymentStatus   = "PAID",
+                TransactionCode = request.PaymentMethod.ToUpper() == "QR_CODE" ? $"VIETQR-{Guid.NewGuid().ToString("N")[..8].ToUpper()}" : null,
+                PaidAt          = DateTime.Now,
+                CreatedAt       = DateTime.Now,
             });
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -276,8 +305,8 @@ public class OrderService : IOrderService
 
             // Reload for response
             var created = await _unitOfWork.Orders.GetByIdAsync(order.OrderId, cancellationToken);
-            return ApiResponse<OrderResponse>.SuccessResult(
-                MapToResponse(created!), "Tạo đơn hàng thành công.");
+            var response = MapToResponse(created!, cashGiven, changeAmount);
+            return ApiResponse<OrderResponse>.SuccessResult(response, "Tạo đơn hàng thành công.");
         }
         catch (Exception ex)
         {
@@ -285,6 +314,50 @@ public class OrderService : IOrderService
             return ApiResponse<OrderResponse>.ErrorResult(
                 $"Lỗi khi tạo đơn hàng: {ex.Message}");
         }
+    }
+
+    // ─── VietQR Generation ───────────────────────────────────────────────────
+
+    public ApiResponse<VietQrInfoDto> GenerateVietQr(decimal amount, string? orderCode = null)
+    {
+        if (amount < 0)
+            return ApiResponse<VietQrInfoDto>.ErrorResult("Số tiền thanh toán không được âm.");
+
+        var bankId = _configuration["VietQR:BankId"] ?? "MB";
+        var bankName = _configuration["VietQR:BankName"] ?? "MB Bank (Napas 247)";
+        var accountNo = _configuration["VietQR:AccountNo"] ?? "0383344686";
+        var accountName = _configuration["VietQR:AccountName"] ?? "MUNCHIFY STORE";
+        var template = _configuration["VietQR:Template"] ?? "compact2";
+
+        // Chuẩn hóa cú pháp chuyển khoản (Napas tối đa 25 ký tự, không dấu)
+        var description = string.IsNullOrWhiteSpace(orderCode)
+            ? "MUNCHIFY"
+            : $"MUNCHIFY {orderCode.Replace("-", "")}";
+        if (description.Length > 25)
+            description = description.Substring(0, 25);
+
+        var encodedDescription = UrlEncoder.Default.Encode(description);
+        var encodedAccountName = UrlEncoder.Default.Encode(accountName);
+
+        // VietQR image URL chuẩn: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<DESCRIPTION>&accountName=<ACCOUNT_NAME>
+        var qrImageUrl = $"https://img.vietqr.io/image/{bankId}-{accountNo}-{template}.png?amount={(long)amount}&addInfo={encodedDescription}&accountName={encodedAccountName}";
+        
+        // VietQR QuickLink (app ngân hàng mở trực tiếp)
+        var qrQuickLink = $"https://api.vietqr.io/{bankId}/{accountNo}/{(long)amount}/{encodedDescription}/vietqr_net_2.jpg?accountName={encodedAccountName}";
+
+        var dto = new VietQrInfoDto
+        {
+            BankId       = bankId,
+            BankName     = bankName,
+            AccountNo    = accountNo,
+            AccountName  = accountName,
+            Amount       = amount,
+            Description  = description,
+            QrImageUrl   = qrImageUrl,
+            QrQuickLink  = qrQuickLink
+        };
+
+        return ApiResponse<VietQrInfoDto>.SuccessResult(dto, "Lấy thông tin VietQR thành công.");
     }
 
     // ─── GetOrdersAsync ──────────────────────────────────────────────────────
@@ -320,7 +393,7 @@ public class OrderService : IOrderService
 
     // ─── Mapping ─────────────────────────────────────────────────────────────
 
-    private static OrderResponse MapToResponse(Order o) => new()
+    private static OrderResponse MapToResponse(Order o, decimal? cashGiven = null, decimal? changeAmount = null) => new()
     {
         OrderId        = o.OrderId,
         OrderCode      = o.OrderCode,
@@ -331,16 +404,20 @@ public class OrderService : IOrderService
         PointsRedeemed = o.PointsRedeemed,
         OrderStatus    = o.OrderStatus,
         CustomerName   = o.Customer?.CustomerName,
+        CashGiven      = cashGiven,
+        ChangeAmount   = changeAmount,
         CreatedAt      = o.CreatedAt,
         Payment        = o.Payments.Select(p => new PaymentDto
         {
-            PaymentId     = p.PaymentId,
-            PaymentMethod = p.PaymentMethod,
-            Amount        = p.Amount,
-            PaymentStatus = p.PaymentStatus,
+            PaymentId       = p.PaymentId,
+            PaymentMethod   = p.PaymentMethod,
+            Amount          = p.Amount,
+            PaymentStatus   = p.PaymentStatus,
             TransactionCode = p.TransactionCode,
-            PaidAt        = p.PaidAt,
-        }).First(),
+            CashGiven       = cashGiven,
+            ChangeAmount    = changeAmount,
+            PaidAt          = p.PaidAt,
+        }).FirstOrDefault() ?? new PaymentDto(),
         OrderDetails = o.OrderDetails.Select(d => new OrderDetailDto
         {
             ProductName    = d.ProductName,

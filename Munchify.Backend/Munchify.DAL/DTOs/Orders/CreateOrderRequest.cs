@@ -10,7 +10,12 @@ public class CreateOrderRequest
     public string? PromotionCode { get; set; }
 
     [Required]
-    public string PaymentMethod { get; set; } = "CASH"; // CASH | QR_CODE | BANK_TRANSFER
+    public string PaymentMethod { get; set; } = "CASH"; // CASH | QR_CODE
+
+    /// <summary>
+    /// Số tiền khách đưa (Bắt buộc và phải >= TotalAmount khi PaymentMethod == CASH).
+    /// </summary>
+    public decimal? CashGiven { get; set; }
 
     [Range(0, int.MaxValue)]
     public int PointsToRedeem { get; set; } = 0;

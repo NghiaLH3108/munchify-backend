@@ -89,4 +89,19 @@ public class OrdersController : ControllerBase
 
         return Ok(response);
     }
+
+    /// <summary>
+    /// GET /api/orders/vietqr – Sinh thông tin và hình ảnh mã VietQR chuẩn Napas 247 cho thanh toán tại quầy POS.
+    /// </summary>
+    [HttpGet("vietqr")]
+    public ActionResult<ApiResponse<VietQrInfoDto>> GetVietQr(
+        [FromQuery] decimal amount,
+        [FromQuery] string? orderCode = null)
+    {
+        var result = _orderService.GenerateVietQr(amount, orderCode);
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }
