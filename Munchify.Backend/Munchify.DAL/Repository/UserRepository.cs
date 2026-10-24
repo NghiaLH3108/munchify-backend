@@ -84,6 +84,12 @@ public class UserRepository : IUserRepository
         return await _context.Users.FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
     }
 
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return null;
+        return await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+    }
+
     public async Task<bool> ExistsUsernameAsync(string username, CancellationToken cancellationToken = default)
     {
         return await _context.Users.AnyAsync(u => u.Username == username, cancellationToken);

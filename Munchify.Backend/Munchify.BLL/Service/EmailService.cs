@@ -224,5 +224,66 @@ namespace Munchify.BLL.Service
                 await SendEmailAsync(adminEmail, subject, htmlBody);
             });
         }
+
+        public async Task<bool> SendPasswordResetOtpAsync(string toEmail, string fullName, string otpCode)
+        {
+            if (string.IsNullOrWhiteSpace(toEmail))
+            {
+                _logger.LogWarning("[EmailService] Không thể gửi OTP vì địa chỉ email nhận rỗng.");
+                return false;
+            }
+
+            string targetEmail = toEmail.Trim();
+            if (targetEmail.EndsWith("@fnbstore.com", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(_settings.AdminEmail))
+            {
+                _logger.LogInformation("[EmailService] Phát hiện email seed {OriginalEmail}, chuyển tiếp email OTP sang AdminEmail: {AdminEmail}", targetEmail, _settings.AdminEmail);
+                targetEmail = _settings.AdminEmail;
+            }
+
+            string subject = $"[MUNCHIFY] Mã xác thực đặt lại mật khẩu (OTP): {otpCode}";
+
+            string htmlBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }}
+        .header {{ background: linear-gradient(135deg, #FF6B00 0%, #FF8800 100%); color: #ffffff; padding: 25px 20px; text-align: center; }}
+        .header h1 {{ margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 1px; }}
+        .header p {{ color: #fff3e0; margin: 6px 0 0; font-size: 13px; }}
+        .content {{ padding: 28px 24px; color: #374151; line-height: 1.6; }}
+        .otp-box {{ text-align: center; margin: 25px 0; }}
+        .otp-code {{ display: inline-block; background-color: #fff7ed; border: 2px dashed #f97316; border-radius: 8px; padding: 14px 32px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #ea580c; font-family: 'Courier New', monospace; }}
+        .note {{ font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; }}
+        .footer {{ padding: 16px; background-color: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>MUNCHIFY</h1>
+            <p>Hệ thống Quản lý F&B Thông minh</p>
+        </div>
+        <div class='content'>
+            <h2 style='color: #1e293b; font-size: 18px; margin-top: 0;'>Yêu Cầu Đặt Lại Mật Khẩu</h2>
+            <p>Xin chào <b>{fullName}</b>,</p>
+            <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <b>{toEmail}</b>. Vui lòng sử dụng mã xác thực OTP bên dưới để hoàn tất việc xác thực:</p>
+            <div class='otp-box'>
+                <span class='otp-code'>{otpCode}</span>
+            </div>
+            <p class='note'>⏱ Mã xác thực có hiệu lực trong vòng <b>10 phút</b>. Vì lý do bảo mật, vui lòng không chia sẻ mã này với bất kỳ ai.</p>
+            <p class='note'>Nếu bạn không yêu cầu hành động này, xin hãy bỏ qua email này hoặc liên hệ ngay với Quản trị viên hệ thống.</p>
+        </div>
+        <div class='footer'>
+            Hệ thống quản lý Munchify F&B Store &bull; Thông báo tự động
+        </div>
+    </div>
+</body>
+</html>";
+
+            return await SendEmailAsync(targetEmail, subject, htmlBody);
+        }
     }
 }
