@@ -17,12 +17,14 @@ public interface IOrderService
         CancellationToken cancellationToken = default);
 
     Task<ApiResponse<PagedResult<OrderSummaryDto>>> GetOrdersAsync(
-        int page = 1,
-        int pageSize = 20,
+        OrderFilterRequest filter,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Tạo thông tin và link ảnh VietQR chuẩn Napas 247 cho thanh toán tại quầy POS.
-    /// </summary>
-    ApiResponse<VietQrInfoDto> GenerateVietQr(decimal amount, string? orderCode = null);
+    Task<ApiResponse<OrderResponse>> GetOrderDetailAsync(
+        int orderId,
+        CancellationToken cancellationToken = default);
+
+    ApiResponse<VietQrInfoDto> GenerateVietQr(
+        decimal amount,
+        string? orderCode = null);
 }

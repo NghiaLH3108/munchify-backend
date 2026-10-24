@@ -16,7 +16,10 @@ public class OrderResponse
     public int PointsEarned { get; set; }
     public int PointsRedeemed { get; set; }
     public string OrderStatus { get; set; } = string.Empty;
+    public string PaymentStatus { get; set; } = string.Empty;
     public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? StaffName { get; set; }
     public decimal? CashGiven { get; set; }
     public decimal? ChangeAmount { get; set; }
     public PaymentDto Payment { get; set; } = new();

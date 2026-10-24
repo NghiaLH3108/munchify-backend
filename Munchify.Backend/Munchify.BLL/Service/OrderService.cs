@@ -363,11 +363,10 @@ public class OrderService : IOrderService
     // ─── GetOrdersAsync ──────────────────────────────────────────────────────
 
     public async Task<ApiResponse<PagedResult<OrderSummaryDto>>> GetOrdersAsync(
-        int page = 1,
-        int pageSize = 20,
+        OrderFilterRequest filter,
         CancellationToken cancellationToken = default)
     {
-        var paged = await _unitOfWork.Orders.GetPagedAsync(page, pageSize, cancellationToken);
+        var paged = await _unitOfWork.Orders.GetPagedAsync(filter, cancellationToken);
 
         var summaries = paged.Items.Select(o => new OrderSummaryDto
         {
@@ -375,9 +374,12 @@ public class OrderService : IOrderService
             OrderCode     = o.OrderCode,
             TotalAmount   = o.TotalAmount,
             OrderStatus   = o.OrderStatus,
+            PaymentStatus = o.PaymentStatus,
             PaymentMethod = o.Payments.FirstOrDefault()?.PaymentMethod ?? "CASH",
             PointsEarned  = o.PointsEarned,
             CustomerName  = o.Customer?.CustomerName,
+            CustomerPhone = o.Customer?.Phone,
+            StaffName     = o.Staff?.FullName,
             CreatedAt     = o.CreatedAt,
             ItemCount     = o.OrderDetails.Count,
         }).ToList();
@@ -386,9 +388,23 @@ public class OrderService : IOrderService
         {
             Items      = summaries,
             TotalCount = paged.TotalCount,
-            PageNumber = page,
-            PageSize   = pageSize,
+            PageNumber = paged.PageNumber,
+            PageSize   = paged.PageSize,
         });
+    }
+
+    public async Task<ApiResponse<OrderResponse>> GetOrderDetailAsync(
+        int orderId,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await _unitOfWork.Orders.GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+        {
+            return ApiResponse<OrderResponse>.NotFoundResult($"Không tìm thấy đơn hàng #{orderId}.");
+        }
+
+        var response = MapToResponse(order);
+        return ApiResponse<OrderResponse>.SuccessResult(response);
     }
 
     // ─── Mapping ─────────────────────────────────────────────────────────────
@@ -403,7 +419,10 @@ public class OrderService : IOrderService
         PointsEarned   = o.PointsEarned,
         PointsRedeemed = o.PointsRedeemed,
         OrderStatus    = o.OrderStatus,
+        PaymentStatus  = o.PaymentStatus,
         CustomerName   = o.Customer?.CustomerName,
+        CustomerPhone  = o.Customer?.Phone,
+        StaffName      = o.Staff?.FullName,
         CashGiven      = cashGiven,
         ChangeAmount   = changeAmount,
         CreatedAt      = o.CreatedAt,
