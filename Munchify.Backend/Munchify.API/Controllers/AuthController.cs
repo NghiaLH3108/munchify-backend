@@ -62,5 +62,52 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
-}
 
+    /// <summary>
+    /// POST /api/auth/forgot-password - Gửi mã OTP khôi phục mật khẩu qua email
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ApiResponse<string>>> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ApiResponse<string>.ErrorResult("Email không hợp lệ"));
+        }
+
+        var result = await _authService.ForgotPasswordAsync(request, cancellationToken);
+        if (!result.Success)
+        {
+            if (result.StatusCode == 404)
+            {
+                return NotFound(result);
+            }
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// POST /api/auth/reset-password - Đặt lại mật khẩu với mã OTP
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<ApiResponse<string>>> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ApiResponse<string>.ErrorResult("Dữ liệu đặt lại mật khẩu không hợp lệ"));
+        }
+
+        var result = await _authService.ResetPasswordAsync(request, cancellationToken);
+        if (!result.Success)
+        {
+            if (result.StatusCode == 404)
+            {
+                return NotFound(result);
+            }
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+}

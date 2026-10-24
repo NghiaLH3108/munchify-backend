@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,13 +20,19 @@ namespace Munchify.BLL.Service;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
+
+    // In-memory cache for OTP with 10-minute validity
+    private static readonly ConcurrentDictionary<string, (string Otp, DateTime Expiry)> _otpCache = new(StringComparer.OrdinalIgnoreCase);
 
     public AuthService(
         IUserRepository userRepository,
+        IEmailService emailService,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
+        _emailService = emailService;
         _configuration = configuration;
     }
 
@@ -110,6 +117,85 @@ public class AuthService : IAuthService
         return ApiResponse<UserDto>.SuccessResult(userDto, "Lấy thông tin người dùng thành công");
     }
 
+    public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return ApiResponse<string>.ErrorResult("Email không được để trống");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(request.Email.Trim(), cancellationToken);
+        if (user == null)
+        {
+            return ApiResponse<string>.NotFoundResult("Email không tồn tại trong hệ thống");
+        }
+
+        if (!user.IsActive)
+        {
+            return ApiResponse<string>.ErrorResult("Tài khoản gắn với email này đã bị vô hiệu hóa");
+        }
+
+        // Sinh mã OTP ngẫu nhiên 6 chữ số
+        var otp = Random.Shared.Next(100000, 999999).ToString();
+        var expiry = DateTime.UtcNow.AddMinutes(10);
+
+        _otpCache[user.Email!] = (otp, expiry);
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("\n==========================================================================");
+        Console.WriteLine($" [MUNCHIFY DEV OTP] Mã xác nhận đặt lại mật khẩu cho {user.Email}: >>> {otp} <<<");
+        Console.WriteLine("==========================================================================\n");
+        Console.ResetColor();
+
+        var sendSuccess = await _emailService.SendPasswordResetOtpAsync(user.Email!, user.FullName, otp);
+        if (!sendSuccess)
+        {
+            return ApiResponse<string>.ErrorResult("Không thể gửi email OTP lúc này. Vui lòng thử lại sau.");
+        }
+
+        return ApiResponse<string>.SuccessResult("Mã OTP đã được gửi về email của bạn. Vui lòng kiểm tra hộp thư.", "Gửi OTP thành công");
+    }
+
+    public async Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Otp) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return ApiResponse<string>.ErrorResult("Thông tin đặt lại mật khẩu không được để trống");
+        }
+
+        var normalizedEmail = request.Email.Trim();
+        if (!_otpCache.TryGetValue(normalizedEmail, out var cachedData))
+        {
+            return ApiResponse<string>.ErrorResult("Mã OTP không hợp lệ hoặc đã hết hạn");
+        }
+
+        if (cachedData.Expiry < DateTime.UtcNow)
+        {
+            _otpCache.TryRemove(normalizedEmail, out _);
+            return ApiResponse<string>.ErrorResult("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+        }
+
+        if (!string.Equals(cachedData.Otp.Trim(), request.Otp.Trim(), StringComparison.Ordinal))
+        {
+            return ApiResponse<string>.ErrorResult("Mã OTP không chính xác");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user == null)
+        {
+            return ApiResponse<string>.NotFoundResult("Không tìm thấy tài khoản người dùng");
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.Now;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        // Xóa OTP sau khi sử dụng thành công
+        _otpCache.TryRemove(normalizedEmail, out _);
+
+        return ApiResponse<string>.SuccessResult("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập với mật khẩu mới.", "Thành công");
+    }
 
     private string GenerateJwtToken(User user)
     {
