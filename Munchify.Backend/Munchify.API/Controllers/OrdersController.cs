@@ -74,18 +74,33 @@ public class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/orders – Lịch sử đơn hàng (phân trang).
+    /// GET /api/orders – Danh sách đơn hàng có tìm kiếm và bộ lọc nâng cao (phân trang).
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<OrderSummaryDto>>>> GetOrders(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] OrderFilterRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _orderService.GetOrdersAsync(page, pageSize, cancellationToken);
+        var response = await _orderService.GetOrdersAsync(request, cancellationToken);
 
         if (!response.Success)
             return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// GET /api/orders/{id} – Chi tiết đơn hàng và các mặt hàng snapshot.
+    /// </summary>
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ApiResponse<OrderResponse>>> GetOrderDetail(
+        [FromRoute] int id,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _orderService.GetOrderDetailAsync(id, cancellationToken);
+
+        if (!response.Success)
+            return NotFound(response);
 
         return Ok(response);
     }
