@@ -68,10 +68,8 @@ public class ProductService : IProductService
                 query = query.Where(p => p.UnitId == filter.UnitId.Value);
             }
 
-            if (filter.IsCombo.HasValue)
-            {
-                query = query.Where(p => p.IsCombo == filter.IsCombo.Value);
-            }
+            var isCombo = filter.IsCombo ?? false;
+            query = query.Where(p => p.IsCombo == isCombo);
 
             if (filter.IsActive.HasValue)
             {
