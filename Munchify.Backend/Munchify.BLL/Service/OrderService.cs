@@ -395,10 +395,11 @@ public class OrderService : IOrderService
 
     public async Task<ApiResponse<OrderResponse>> GetOrderDetailAsync(
         int orderId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int? restrictToStaffId = null)
     {
         var order = await _unitOfWork.Orders.GetByIdAsync(orderId, cancellationToken);
-        if (order == null)
+        if (order == null || (restrictToStaffId.HasValue && order.StaffId != restrictToStaffId.Value))
         {
             return ApiResponse<OrderResponse>.NotFoundResult($"Không tìm thấy đơn hàng #{orderId}.");
         }

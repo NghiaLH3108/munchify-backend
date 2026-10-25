@@ -24,6 +24,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// POST /api/auth/login - Đăng nhập tài khoản, trả về JWT Token và thông tin User
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -66,6 +67,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// POST /api/auth/forgot-password - Gửi mã OTP khôi phục mật khẩu qua email
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("forgot-password")]
     public async Task<ActionResult<ApiResponse<string>>> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken = default)
     {
@@ -90,6 +92,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// POST /api/auth/reset-password - Đặt lại mật khẩu với mã OTP
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("reset-password")]
     public async Task<ActionResult<ApiResponse<string>>> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken = default)
     {

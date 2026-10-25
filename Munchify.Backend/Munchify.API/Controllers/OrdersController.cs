@@ -12,6 +12,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.AdminOrStaff)]
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
@@ -21,19 +22,12 @@ public class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Helper lấy userId từ JWT claims (NameIdentifier / sub), fallback an toàn về 1 nếu chưa auth hoặc claim không hợp lệ.
+    /// Helper lấy userId từ JWT claims. Controller đã [Authorize] nên claim luôn hợp lệ.
     /// </summary>
     private int GetCurrentUserId()
     {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)
-                 ?? User.FindFirst("sub");
-
-        if (claim != null && int.TryParse(claim.Value, out var userId) && userId > 0)
-        {
-            return userId;
-        }
-
-        return 1;
+        return User.GetUserId()
+            ?? throw new UnauthorizedAccessException("Phiên đăng nhập không hợp lệ.");
     }
 
     /// <summary>
@@ -81,6 +75,10 @@ public class OrdersController : ControllerBase
         [FromQuery] OrderFilterRequest request,
         CancellationToken cancellationToken = default)
     {
+        // STAFF chỉ được xem đơn hàng của chính mình; ADMIN xem tất cả
+        if (!User.IsAdmin())
+            request.StaffId = GetCurrentUserId();
+
         var response = await _orderService.GetOrdersAsync(request, cancellationToken);
 
         if (!response.Success)
@@ -97,7 +95,8 @@ public class OrdersController : ControllerBase
         [FromRoute] int id,
         CancellationToken cancellationToken = default)
     {
-        var response = await _orderService.GetOrderDetailAsync(id, cancellationToken);
+        int? restrictToStaffId = User.IsAdmin() ? null : GetCurrentUserId();
+        var response = await _orderService.GetOrderDetailAsync(id, cancellationToken, restrictToStaffId);
 
         if (!response.Success)
             return NotFound(response);

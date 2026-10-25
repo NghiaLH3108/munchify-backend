@@ -6,6 +6,8 @@ public class OrderFilterRequest
 {
     public string? SearchQuery { get; set; }
     public string? OrderStatus { get; set; }
+    /// <summary>Giới hạn đơn theo nhân viên tạo (STAFF chỉ xem đơn của mình – controller tự gán).</summary>
+    public int? StaffId { get; set; }
     public string? PaymentMethod { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }

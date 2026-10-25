@@ -12,6 +12,7 @@ using Munchify.DAL.DTOs.Inventory;
 namespace Munchify.API.Controllers;
 
 [ApiController]
+[Authorize(Roles = AppRoles.Admin)]
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
@@ -32,7 +33,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet("api/stock-movements")]
-    // [Authorize]
+    // [Authorize] – áp dụng ở mức class (ADMIN)
     public async Task<ActionResult<ApiResponse<PagedResult<StockMovementDto>>>> GetStockMovements(
         [FromQuery] int? productId = null,
         [FromQuery] string? movementType = null,
@@ -53,8 +54,7 @@ public class InventoryController : ControllerBase
             return BadRequest(ApiResponse<StockMovementDto>.ErrorResult("Dữ liệu không hợp lệ"));
         }
 
-        // Mock userId for now since authentication is not configured yet.
-        int userId = 1; 
+        int userId = User.GetUserId() ?? 0;
         
         var result = await _inventoryService.AdjustStockAsync(request, userId);
         if (!result.Success)
@@ -101,7 +101,7 @@ public class InventoryController : ControllerBase
             return BadRequest(ApiResponse<bool>.ErrorResult("Dữ liệu không hợp lệ"));
         }
 
-        int userId = 1; // Mock user id
+        int userId = User.GetUserId() ?? 0;
         var result = await _inventoryService.GenerateDraftImportsFromForecastAsync(items, userId);
         
         if (!result.Success)

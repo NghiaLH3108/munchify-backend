@@ -9,6 +9,7 @@ namespace Munchify.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;

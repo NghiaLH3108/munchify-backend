@@ -22,7 +22,8 @@ public interface IOrderService
 
     Task<ApiResponse<OrderResponse>> GetOrderDetailAsync(
         int orderId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        int? restrictToStaffId = null);
 
     ApiResponse<VietQrInfoDto> GenerateVietQr(
         decimal amount,

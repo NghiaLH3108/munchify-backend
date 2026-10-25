@@ -55,6 +55,12 @@ public class OrderRepository : IOrderRepository
                 (o.Customer != null && o.Customer.Phone.Contains(search)));
         }
 
+        // StaffId (STAFF chỉ thấy đơn của chính mình)
+        if (filter.StaffId.HasValue)
+        {
+            query = query.Where(o => o.StaffId == filter.StaffId.Value);
+        }
+
         // OrderStatus
         if (!string.IsNullOrWhiteSpace(filter.OrderStatus) && filter.OrderStatus != "ALL")
         {

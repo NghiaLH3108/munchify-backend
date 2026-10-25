@@ -13,7 +13,7 @@ namespace Munchify.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize(Roles = AppRoles.AdminOrStaff)]
     public class DamagedExpiredRecordsController : ControllerBase
     {
         private readonly IDamagedExpiredService _service;
@@ -33,7 +33,7 @@ namespace Munchify.API.Controllers
                 return BadRequest(ApiResponse<DamagedExpiredRecordDto>.ErrorResult("Dữ liệu báo cáo không hợp lệ."));
             }
 
-            int userId = 2; // Default staff userId
+            int userId = User.GetUserId() ?? 0;
             var response = await _service.CreateStaffReportAsync(request, userId);
             if (!response.Success)
             {
@@ -52,7 +52,7 @@ namespace Munchify.API.Controllers
 
         [HttpGet]
         [HttpGet("pending")]
-        //[Authorize(Roles = "ADMIN,STAFF")]
+        [Authorize(Roles = AppRoles.AdminOrStaff)]
         public async Task<ActionResult<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>>> GetPendingRecords([FromQuery] string? status = null)
         {
             var response = await _service.GetPendingRecordsAsync(status);
@@ -75,7 +75,7 @@ namespace Munchify.API.Controllers
         }
 
         [HttpPut("{id}/approve")]
-        //[Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<ActionResult<ApiResponse<bool>>> ApproveRecord(int id)
         {
             // var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -83,7 +83,7 @@ namespace Munchify.API.Controllers
             // {
             //     return Unauthorized(new ApiResponse<bool> { Success = false, Message = "Lỗi xác thực người dùng." });
             // }
-            int userId = 1; // Hardcode userId để test
+            int userId = User.GetUserId() ?? 0;
 
             var response = await _service.ApproveRecordAsync(id, userId);
             if (!response.Success)
@@ -94,7 +94,7 @@ namespace Munchify.API.Controllers
         }
 
         [HttpPut("{id}/reject")]
-        //[Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<ActionResult<ApiResponse<bool>>> RejectRecord(int id)
         {
             // var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -102,7 +102,7 @@ namespace Munchify.API.Controllers
             // {
             //     return Unauthorized(new ApiResponse<bool> { Success = false, Message = "Lỗi xác thực người dùng." });
             // }
-            int userId = 1; // Hardcode userId để test
+            int userId = User.GetUserId() ?? 0;
 
             var response = await _service.RejectRecordAsync(id, userId);
             if (!response.Success)

@@ -8,6 +8,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class SuppliersController : ControllerBase
 {
     private readonly ISupplierService _supplierService;
@@ -44,6 +45,7 @@ public class SuppliersController : ControllerBase
     /// <summary>
     /// Add Supplier - Thêm nhà cung cấp mới
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<IActionResult> CreateSupplier([FromBody] SaveSupplierRequest request)
     {
@@ -64,6 +66,7 @@ public class SuppliersController : ControllerBase
     /// <summary>
     /// Update Supplier - Cập nhật thông tin nhà cung cấp
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateSupplier(int id, [FromBody] SaveSupplierRequest request)
     {
@@ -84,6 +87,7 @@ public class SuppliersController : ControllerBase
     /// <summary>
     /// Delete Supplier - Xóa mềm nhà cung cấp (IsActive = false)
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteSupplier(int id)
     {

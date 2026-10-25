@@ -10,6 +10,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class PromotionsController : ControllerBase
 {
     private readonly IPromotionService _promotionService;
@@ -57,6 +58,7 @@ public class PromotionsController : ControllerBase
     /// <summary>
     /// POST /api/promotions – Tạo khuyến mãi mới (Admin).
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePromotionRequest request)
     {
@@ -70,6 +72,7 @@ public class PromotionsController : ControllerBase
     /// <summary>
     /// PUT /api/promotions/{id} – Cập nhật khuyến mãi (Admin).
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePromotionRequest request)
     {
@@ -83,6 +86,7 @@ public class PromotionsController : ControllerBase
     /// <summary>
     /// PATCH /api/promotions/{id}/status – Bật/tắt trạng thái hoạt động của khuyến mãi.
     /// </summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> ToggleStatus(int id)
     {

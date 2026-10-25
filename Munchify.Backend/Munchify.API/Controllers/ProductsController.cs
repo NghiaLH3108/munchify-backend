@@ -12,6 +12,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -50,6 +51,8 @@ public class ProductsController : ControllerBase
 
         return Ok(response);
     }
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ProductDetailDto>>> CreateProduct([FromBody] ProductRequest request)
     {
@@ -60,6 +63,7 @@ public class ProductsController : ControllerBase
         return Ok(response);
     }
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<ProductDetailDto>>> UpdateProduct(int id, [FromBody] ProductRequest request)
     {
@@ -70,6 +74,7 @@ public class ProductsController : ControllerBase
         return Ok(response);
     }
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPatch("{id}/status")]
     public async Task<ActionResult<ApiResponse<bool>>> ToggleProductStatus(int id)
     {

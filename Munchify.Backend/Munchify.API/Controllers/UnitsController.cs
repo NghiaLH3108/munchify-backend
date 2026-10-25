@@ -8,6 +8,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class UnitsController : ControllerBase
 {
     private readonly IUnitService _unitService;
@@ -44,6 +45,7 @@ public class UnitsController : ControllerBase
     }
 
     /// <summary>POST /api/units — Create a new selling unit.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<UnitDto>>> CreateUnit([FromBody] SaveUnitRequest request)
     {
@@ -58,6 +60,7 @@ public class UnitsController : ControllerBase
     }
 
     /// <summary>PUT /api/units/{id} — Update an existing selling unit.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<UnitDto>>> UpdateUnit(int id, [FromBody] SaveUnitRequest request)
     {
@@ -72,6 +75,7 @@ public class UnitsController : ControllerBase
     }
 
     /// <summary>DELETE /api/units/{id} — Hard-delete a unit (guarded by product FK check).</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("{id}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteUnit(int id)
     {
