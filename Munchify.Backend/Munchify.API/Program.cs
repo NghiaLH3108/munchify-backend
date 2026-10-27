@@ -50,8 +50,8 @@ builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBac
 builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IOrderRepository, Munchify.DAL.Repository.OrderRepository>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IOrderService, Munchify.BLL.Service.OrderService>();
 
-// Dashboard
-builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDashboardService, Munchify.BLL.Service.DashboardService>();
+
+
 
 builder.Services.AddAutoMapper(config => config.AddProfile<Munchify.BLL.Helpers.MappingProfile>());
 
