@@ -9,6 +9,7 @@ namespace Munchify.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -25,11 +26,12 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetStaffList(
         [FromQuery] string? role,
         [FromQuery] bool? isActive,
+        [FromQuery] string? searchKeyword,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userService.GetStaffListAsync(role, isActive, page, pageSize, cancellationToken);
+        var result = await _userService.GetStaffListAsync(role, isActive, searchKeyword, page, pageSize, cancellationToken);
         return Ok(result);
     }
 

@@ -21,5 +21,10 @@ public class MappingProfile : Profile
         CreateMap<StockMovement, Munchify.DAL.DTOs.Inventory.StockMovementDto>()
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : string.Empty))
             .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty));
+            
+        // Promotion mappings
+        CreateMap<Product, Munchify.DAL.DTOs.Products.ProductDto>();
+        CreateMap<Promotion, Munchify.DAL.DTOs.Promotions.PromotionDto>();
+        CreateMap<Promotion, Munchify.DAL.DTOs.Promotions.PromotionDetailDto>();
     }
 }

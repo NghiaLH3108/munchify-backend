@@ -8,6 +8,7 @@ namespace Munchify.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.AdminOrStaff)]
     public class UploadController : ControllerBase
     {
         private readonly IWebHostEnvironment _environment;

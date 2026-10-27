@@ -8,7 +8,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/customers")]
 [ApiController]
-// [Authorize] // Requires authentication
+[Authorize(Roles = AppRoles.AdminOrStaff)]
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _customerService;

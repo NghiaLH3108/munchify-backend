@@ -10,6 +10,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class CombosController : ControllerBase
 {
     private readonly IComboService _comboService;
@@ -43,6 +44,7 @@ public class CombosController : ControllerBase
     }
 
     /// <summary>POST /api/combos — Create combo with component products and quantities.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ProductDetailDto>>> CreateCombo(
         [FromBody] SaveComboRequest request, CancellationToken cancellationToken)
@@ -58,6 +60,7 @@ public class CombosController : ControllerBase
     }
 
     /// <summary>PUT /api/combos/{id} — Update components, selling price and info.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<ProductDetailDto>>> UpdateCombo(
         int id, [FromBody] SaveComboRequest request, CancellationToken cancellationToken)
@@ -73,6 +76,7 @@ public class CombosController : ControllerBase
     }
 
     /// <summary>DELETE /api/combos/{id} — Soft-delete if has history, otherwise hard-delete.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("{id}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteCombo(int id, CancellationToken cancellationToken)
     {

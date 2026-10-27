@@ -25,6 +25,16 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
             .AsQueryable();
     }
 
+    public async Task<List<Product>> GetActiveSingleProductsWithSuppliersAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .Where(p => !p.IsCombo && p.IsActive)
+            .Include(p => p.Category)
+                .ThenInclude(c => c.Suppliers)
+            .Include(p => p.Unit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Product?> GetProductByIdWithDetailsAsync(int id)
     {
         return await _context.Products

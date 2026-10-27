@@ -3,6 +3,8 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Munchify.API.Hubs;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Inventory;
@@ -11,21 +13,49 @@ namespace Munchify.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize(Roles = AppRoles.AdminOrStaff)]
     public class DamagedExpiredRecordsController : ControllerBase
     {
         private readonly IDamagedExpiredService _service;
+        private readonly IHubContext<InventoryHub> _hubContext;
 
-        public DamagedExpiredRecordsController(IDamagedExpiredService service)
+        public DamagedExpiredRecordsController(IDamagedExpiredService service, IHubContext<InventoryHub> hubContext)
         {
             _service = service;
+            _hubContext = hubContext;
         }
 
-        [HttpGet("pending")]
-        //[Authorize(Roles = "ADMIN,STAFF")]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>>> GetPendingRecords()
+        [HttpPost("report")]
+        public async Task<ActionResult<ApiResponse<DamagedExpiredRecordDto>>> CreateStaffReport([FromBody] StaffReportDamagedExpiredRequest request)
         {
-            var response = await _service.GetPendingRecordsAsync();
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<DamagedExpiredRecordDto>.ErrorResult("Dữ liệu báo cáo không hợp lệ."));
+            }
+
+            int userId = User.GetUserId() ?? 0;
+            var response = await _service.CreateStaffReportAsync(request, userId);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            // Real-time broadcast to Web Admin
+            if (response.Data != null)
+            {
+                await _hubContext.Clients.All.SendAsync("ReceiveExpiryAlert", 
+                    $"Nhân viên vừa báo cáo hàng hỏng/hết hạn: {response.Data.ProductName} (SL: {response.Data.Quantity}) - Lý do: {response.Data.Reason}");
+            }
+
+            return Ok(response);
+        }
+
+        [HttpGet]
+        [HttpGet("pending")]
+        [Authorize(Roles = AppRoles.AdminOrStaff)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>>> GetPendingRecords([FromQuery] string? status = null)
+        {
+            var response = await _service.GetPendingRecordsAsync(status);
             if (!response.Success)
             {
                 return BadRequest(response);
@@ -45,7 +75,7 @@ namespace Munchify.API.Controllers
         }
 
         [HttpPut("{id}/approve")]
-        //[Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<ActionResult<ApiResponse<bool>>> ApproveRecord(int id)
         {
             // var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -53,7 +83,7 @@ namespace Munchify.API.Controllers
             // {
             //     return Unauthorized(new ApiResponse<bool> { Success = false, Message = "Lỗi xác thực người dùng." });
             // }
-            int userId = 1; // Hardcode userId để test
+            int userId = User.GetUserId() ?? 0;
 
             var response = await _service.ApproveRecordAsync(id, userId);
             if (!response.Success)
@@ -64,7 +94,7 @@ namespace Munchify.API.Controllers
         }
 
         [HttpPut("{id}/reject")]
-        //[Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<ActionResult<ApiResponse<bool>>> RejectRecord(int id)
         {
             // var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -72,7 +102,7 @@ namespace Munchify.API.Controllers
             // {
             //     return Unauthorized(new ApiResponse<bool> { Success = false, Message = "Lỗi xác thực người dùng." });
             // }
-            int userId = 1; // Hardcode userId để test
+            int userId = User.GetUserId() ?? 0;
 
             var response = await _service.RejectRecordAsync(id, userId);
             if (!response.Success)

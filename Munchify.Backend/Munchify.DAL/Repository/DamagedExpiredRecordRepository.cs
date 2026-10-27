@@ -14,12 +14,19 @@ namespace Munchify.DAL.Repository
         {
         }
 
-        public async Task<IEnumerable<DamagedExpiredRecord>> GetPendingRecordsWithDetailsAsync()
+        public async Task<IEnumerable<DamagedExpiredRecord>> GetPendingRecordsWithDetailsAsync(string? status = null)
         {
-            return await _context.DamagedExpiredRecords
+            var query = _context.DamagedExpiredRecords
                 .Include(r => r.Product)
                 .ThenInclude(p => p.Unit)
-                .Where(r => r.Status == "PENDING")
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status) && !status.Equals("ALL", System.StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(r => r.Status == status.ToUpper());
+            }
+
+            return await query
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
