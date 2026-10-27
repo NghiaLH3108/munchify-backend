@@ -29,6 +29,8 @@ builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.ICustomerRepositor
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.ICustomerService, Munchify.BLL.Service.CustomerService>();
 builder.Services.AddHttpClient<Munchify.BLL.Service.Interfaces.IInventoryAiService, Munchify.BLL.Service.InventoryAiService>();
 builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IDamagedExpiredService, Munchify.BLL.Service.DamagedExpiredService>();
+builder.Services.AddScoped<Munchify.DAL.Repository.Interfaces.IReportRepository, Munchify.DAL.Repository.ReportRepository>();
+builder.Services.AddScoped<Munchify.BLL.Service.Interfaces.IReportService, Munchify.BLL.Service.ReportService>();
 builder.Services.AddHostedService<Munchify.API.BackgroundServices.ExpiryCheckBackgroundService>();
 
 builder.Services.AddAutoMapper(config => config.AddProfile<Munchify.BLL.Helpers.MappingProfile>());
