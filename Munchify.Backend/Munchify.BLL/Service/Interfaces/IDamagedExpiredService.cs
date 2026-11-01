@@ -12,5 +12,6 @@ namespace Munchify.BLL.Service.Interfaces
         Task<ApiResponse<bool>> ApproveRecordAsync(int recordId, int userId);
         Task<ApiResponse<bool>> RejectRecordAsync(int recordId, int userId);
         Task<ApiResponse<DamagedExpiredRecordDto>> CreateStaffReportAsync(StaffReportDamagedExpiredRequest request, int userId);
+        Task<ApiResponse<DamagedExpiredRecordDto>> AnalyzeRecordAsync(int recordId);
     }
 }
