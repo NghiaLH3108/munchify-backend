@@ -17,15 +17,18 @@ namespace Munchify.BLL.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEmailService _emailService;
         private readonly Munchify.DAL.Repository.Interfaces.IUserRepository _userRepository;
+        private readonly IInventoryAiService _aiService;
 
         public DamagedExpiredService(
             IUnitOfWork unitOfWork, 
             IEmailService emailService,
-            Munchify.DAL.Repository.Interfaces.IUserRepository userRepository)
+            Munchify.DAL.Repository.Interfaces.IUserRepository userRepository,
+            IInventoryAiService aiService)
         {
             _unitOfWork = unitOfWork;
             _emailService = emailService;
             _userRepository = userRepository;
+            _aiService = aiService;
         }
 
         public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync(string? status = null)
@@ -39,6 +42,8 @@ namespace Munchify.BLL.Service
                 {
                     RecordId = r.RecordId,
                     ImportDetailId = r.ImportDetailId,
+                    BatchCode = r.ImportDetail?.Import?.ImportCode ?? (r.ImportDetailId != null ? $"IMP-{r.ImportDetailId:D4}" : $"RECORD-{r.RecordId:D4}"),
+                    ExpiryDate = r.ImportDetail?.ExpiryDate,
                     ProductId = r.ProductId,
                     ProductName = r.Product?.ProductName ?? "Unknown",
                     UnitName = r.Product?.Unit?.UnitName ?? "Unknown",
@@ -211,7 +216,7 @@ namespace Munchify.BLL.Service
                     ReportType = request.ReportType.ToUpper(),
                     Status = "PENDING",
                     Reason = request.Reason,
-                    AiAnalysis = $"[Staff Báo Cáo] Lý do: {request.Reason}",
+                    AiAnalysis = null,
                     CreatedAt = DateTime.Now
                 };
 
@@ -237,6 +242,8 @@ namespace Munchify.BLL.Service
                 {
                     RecordId = record.RecordId,
                     ImportDetailId = record.ImportDetailId,
+                    BatchCode = $"MANUAL-{record.CreatedAt:yyyyMMdd}-{record.RecordId:D3}",
+                    ExpiryDate = null,
                     ProductId = product.ProductId,
                     ProductName = product.ProductName,
                     UnitName = unit?.UnitName ?? "Món",
@@ -256,6 +263,67 @@ namespace Munchify.BLL.Service
             {
                 response.Success = false;
                 response.Message = "Lỗi khi gửi báo cáo hàng hư hỏng/hết hạn.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<DamagedExpiredRecordDto>> AnalyzeRecordAsync(int recordId)
+        {
+            var response = new ApiResponse<DamagedExpiredRecordDto>();
+            try
+            {
+                var record = await _unitOfWork.DamagedExpiredRecords.GetRecordWithDetailsAsync(recordId);
+                if (record == null)
+                {
+                    response.Success = false;
+                    response.Message = "Không tìm thấy thông tin lô hàng cần phân tích.";
+                    return response;
+                }
+
+                string productName = record.Product?.ProductName ?? "Sản phẩm";
+                string unitName = record.Product?.Unit?.UnitName ?? "Món";
+                DateTime? expiryDate = record.ImportDetail?.ExpiryDate;
+
+                string aiResult = await _aiService.AnalyzeRecordAsync(
+                    productName: productName,
+                    qty: record.Quantity,
+                    unitName: unitName,
+                    reportType: record.ReportType,
+                    reason: record.Reason,
+                    expiryDate: expiryDate
+                );
+
+                record.AiAnalysis = aiResult;
+                _unitOfWork.DamagedExpiredRecords.Update(record);
+                await _unitOfWork.CompleteAsync();
+
+                var dto = new DamagedExpiredRecordDto
+                {
+                    RecordId = record.RecordId,
+                    ImportDetailId = record.ImportDetailId,
+                    BatchCode = record.ImportDetail?.Import?.ImportCode ?? (record.ImportDetailId != null ? $"IMP-{record.ImportDetailId:D4}" : $"RECORD-{record.RecordId:D4}"),
+                    ExpiryDate = record.ImportDetail?.ExpiryDate,
+                    ProductId = record.ProductId,
+                    ProductName = record.Product?.ProductName ?? "Unknown",
+                    UnitName = record.Product?.Unit?.UnitName ?? "Unknown",
+                    Quantity = record.Quantity,
+                    ReportType = record.ReportType,
+                    Status = record.Status,
+                    Reason = record.Reason,
+                    AiAnalysis = record.AiAnalysis,
+                    CreatedAt = record.CreatedAt,
+                    ProcessedAt = record.ProcessedAt
+                };
+
+                response.Success = true;
+                response.Data = dto;
+                response.Message = "Phân tích AI hoàn tất.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi gọi AI phân tích.";
                 response.Errors = new List<string> { ex.Message };
             }
             return response;

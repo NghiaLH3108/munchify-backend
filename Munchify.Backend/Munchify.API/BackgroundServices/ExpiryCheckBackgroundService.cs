@@ -53,7 +53,6 @@ namespace Munchify.API.BackgroundServices
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<MunchifyDbContext>();
-            var aiService = scope.ServiceProvider.GetRequiredService<IInventoryAiService>();
             var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<InventoryHub>>();
 
             var thresholdDate = DateTime.Now.AddDays(7); // Check items expiring in 7 days or less
@@ -75,12 +74,6 @@ namespace Munchify.API.BackgroundServices
             foreach (var item in expiringItems)
             {
                 if (item.Product == null) continue;
-                
-                var analysis = await aiService.AnalyzeExpiryItemsAsync(
-                    productName: item.Product.ProductName,
-                    qty: item.Quantity,
-                    expiryDate: item.ExpiryDate.Value
-                );
 
                 var record = new DamagedExpiredRecord
                 {
@@ -89,7 +82,7 @@ namespace Munchify.API.BackgroundServices
                     Quantity = item.Quantity,
                     ReportType = "EXPIRED",
                     Status = "PENDING",
-                    AiAnalysis = analysis,
+                    AiAnalysis = null, // Will be analyzed on-demand when user clicks
                     CreatedAt = DateTime.Now
                 };
 

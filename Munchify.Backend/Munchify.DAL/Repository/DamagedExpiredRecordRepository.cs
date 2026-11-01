@@ -18,7 +18,9 @@ namespace Munchify.DAL.Repository
         {
             var query = _context.DamagedExpiredRecords
                 .Include(r => r.Product)
-                .ThenInclude(p => p.Unit)
+                    .ThenInclude(p => p.Unit)
+                .Include(r => r.ImportDetail)
+                    .ThenInclude(d => d.Import)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(status) && !status.Equals("ALL", System.StringComparison.OrdinalIgnoreCase))
@@ -29,6 +31,16 @@ namespace Munchify.DAL.Repository
             return await query
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<DamagedExpiredRecord?> GetRecordWithDetailsAsync(int recordId)
+        {
+            return await _context.DamagedExpiredRecords
+                .Include(r => r.Product)
+                    .ThenInclude(p => p.Unit)
+                .Include(r => r.ImportDetail)
+                    .ThenInclude(d => d.Import)
+                .FirstOrDefaultAsync(r => r.RecordId == recordId);
         }
 
         public async Task<Munchify.DAL.DTOs.Inventory.AiExpirySummaryDto> GetSummaryMetricsAsync()

@@ -111,5 +111,17 @@ namespace Munchify.API.Controllers
             }
             return Ok(response);
         }
+
+        [HttpPost("{id}/analyze")]
+        [Authorize(Roles = AppRoles.AdminOrStaff)]
+        public async Task<ActionResult<ApiResponse<DamagedExpiredRecordDto>>> AnalyzeRecord(int id)
+        {
+            var response = await _service.AnalyzeRecordAsync(id);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
     }
 }
