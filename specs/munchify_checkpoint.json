@@ -1,0 +1,31 @@
+{
+  "checkpoint_id": "CP-TOAST-STATUS-TOGGLE-20261101",
+  "feature": "Hiển thị ToastMessage khi bật/tắt trạng thái bên Thực đơn, Sản phẩm và Khuyến mãi",
+  "base_branch": "dev",
+  "target_branch": "toast-message-HuyCG",
+  "commit_message": "feat: HuyCG-status-toggle-toast-message-#66-UC00",
+  "created_at": "2026-11-01T12:08:00+07:00",
+  "file_whitelist": [
+    "Munchify.Backend/Munchify.BLL/Service/Interfaces/IComboService.cs",
+    "Munchify.Backend/Munchify.BLL/Service/ComboService.cs",
+    "Munchify.Backend/Munchify.API/Controllers/CombosController.cs",
+    "munchify-frontend/munchify_frontend/lib/features/products/presentation/bloc/product_admin_state.dart",
+    "munchify-frontend/munchify_frontend/lib/features/products/presentation/bloc/product_admin_bloc.dart",
+    "munchify-frontend/munchify_frontend/lib/features/products/presentation/screens/product_management_screen.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/domain/repositories/combo_repository.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/data/repositories/combo_repository_impl.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/data/datasources/combo_remote_data_source.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/domain/usecases/manage_combo_usecases.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/presentation/bloc/combo_event.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/presentation/bloc/combo_bloc.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/presentation/screens/manage_combos_screen.dart",
+    "munchify-frontend/munchify_frontend/lib/features/combos/presentation/widgets/combo_form_dialog.dart",
+    "munchify-frontend/munchify_frontend/lib/features/promotions/presentation/bloc/promotion_admin_event.dart",
+    "munchify-frontend/munchify_frontend/lib/features/promotions/presentation/bloc/promotion_admin_state.dart",
+    "munchify-frontend/munchify_frontend/lib/features/promotions/presentation/bloc/promotion_admin_bloc.dart",
+    "munchify-frontend/munchify_frontend/lib/features/promotions/presentation/pages/promotion_management_screen.dart",
+    "munchify-frontend/munchify_frontend/lib/injection_container.dart",
+    "munchify-frontend/munchify_frontend/test/features/products/presentation/bloc/product_status_toggle_test.dart",
+    "munchify-frontend/munchify_frontend/test/features/promotions/presentation/bloc/promotion_status_toggle_test.dart"
+  ]
+}

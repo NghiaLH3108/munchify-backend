@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -185,6 +185,33 @@ public class ComboService : IComboService
             hasHistory
                 ? "Combo da co lich su giao dich nen duoc chuyen sang trang thai ngung ban."
                 : "Xoa combo thanh cong.");
+    }
+
+    public async Task<ApiResponse<bool>> ToggleComboStatusAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var combo = await _unitOfWork.Products.GetComboByIdAsync(id, true, cancellationToken);
+        if (combo == null)
+            return ApiResponse<bool>.NotFoundResult("Không tìm thấy combo.");
+
+        if (!combo.IsActive)
+        {
+            var inactive = combo.ProductComboParentProducts
+                .FirstOrDefault(c => c.ComponentProduct != null && !c.ComponentProduct.IsActive);
+            if (inactive != null)
+            {
+                return ApiResponse<bool>.ErrorResult(
+                    $"Không thể bật combo vì món thành phần '{inactive.ComponentProduct.ProductName}' đang ngừng bán.");
+            }
+        }
+
+        combo.IsActive = !combo.IsActive;
+        combo.UpdatedAt = DateTime.UtcNow;
+
+        await _unitOfWork.CompleteAsync(cancellationToken);
+
+        return ApiResponse<bool>.SuccessResult(
+            combo.IsActive,
+            combo.IsActive ? "Đã bật trạng thái combo thành công." : "Đã tạm dừng combo thành công.");
     }
 
     // helpers

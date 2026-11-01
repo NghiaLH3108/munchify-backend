@@ -86,4 +86,16 @@ public class CombosController : ControllerBase
 
         return Ok(response);
     }
+
+    /// <summary>PATCH /api/combos/{id}/status — Toggle combo active status.</summary>
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+    [HttpPatch("{id}/status")]
+    public async Task<ActionResult<ApiResponse<bool>>> ToggleComboStatus(int id, CancellationToken cancellationToken)
+    {
+        var response = await _comboService.ToggleComboStatusAsync(id, cancellationToken);
+        if (!response.Success)
+            return response.StatusCode == 404 ? NotFound(response) : BadRequest(response);
+
+        return Ok(response);
+    }
 }

@@ -13,4 +13,5 @@ public interface IComboService
     Task<ApiResponse<ProductDetailDto>> CreateComboAsync(SaveComboRequest request, CancellationToken cancellationToken = default);
     Task<ApiResponse<ProductDetailDto>> UpdateComboAsync(int id, SaveComboRequest request, CancellationToken cancellationToken = default);
     Task<ApiResponse<bool>> DeleteComboAsync(int id, CancellationToken cancellationToken = default);
+    Task<ApiResponse<bool>> ToggleComboStatusAsync(int id, CancellationToken cancellationToken = default);
 }
