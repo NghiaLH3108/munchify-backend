@@ -176,6 +176,24 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<MunchifyDbContext>();
+        db.Database.ExecuteSqlRaw(@"
+            IF COL_LENGTH('StockImportDetails', 'ExpiryDate') IS NULL
+            BEGIN
+                ALTER TABLE StockImportDetails ADD ExpiryDate DATETIME2 NULL;
+            END
+        ");
+    }
+    catch
+    {
+        // Ignore startup schema check errors if DB is temporarily unreachable
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

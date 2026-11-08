@@ -34,6 +34,14 @@ public class ProductService : IProductService
         if (imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
             imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
+            var req = _httpContextAccessor.HttpContext?.Request;
+            if (req != null && Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) &&
+                (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Host, "10.0.2.2", StringComparison.OrdinalIgnoreCase)))
+            {
+                return $"{req.Scheme}://{req.Host}{req.PathBase}{uri.PathAndQuery}";
+            }
             return imageUrl;
         }
 

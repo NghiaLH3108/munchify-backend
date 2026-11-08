@@ -14,6 +14,40 @@ namespace Munchify.DAL.Repository
         {
         }
 
+        public async Task EnsureSchemaAsync()
+        {
+            await _context.Database.ExecuteSqlRawAsync(@"
+                IF COL_LENGTH('StockImportDetails', 'ExpiryDate') IS NULL
+                BEGIN
+                    ALTER TABLE StockImportDetails ADD ExpiryDate DATETIME2 NULL;
+                END
+            ");
+        }
+
+        public async Task<int> ResolveValidUserIdAsync(int userId)
+        {
+            if (userId > 0 && await _context.Users.AnyAsync(u => u.UserId == userId))
+            {
+                return userId;
+            }
+
+            var fallbackUserId = await _context.Users
+                .Where(u => u.IsActive)
+                .OrderBy(u => u.UserId)
+                .Select(u => u.UserId)
+                .FirstOrDefaultAsync();
+
+            if (fallbackUserId > 0)
+            {
+                return fallbackUserId;
+            }
+
+            return await _context.Users
+                .OrderBy(u => u.UserId)
+                .Select(u => u.UserId)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<StockImport>> GetAllWithDetailsAsync()
         {
             return await _dbSet
@@ -22,6 +56,7 @@ namespace Munchify.DAL.Repository
                 .Include(i => i.StockImportDetails)
                     .ThenInclude(d => d.Product)
                         .ThenInclude(p => p.Unit)
+                .OrderByDescending(i => i.ImportDate)
                 .ToListAsync();
         }
 

@@ -48,11 +48,20 @@ public class ProductRepository : GenericRepository<Product>, IProductRepository
 
     public async Task<IEnumerable<Product>> GetProductsForStockAsync(int? supplierId)
     {
-        var query = _context.Products.Include(p => p.Unit).AsQueryable();
+        var query = _context.Products
+            .Include(p => p.Unit)
+            .Where(p => !p.IsCombo && p.IsActive)
+            .AsQueryable();
 
         if (supplierId.HasValue)
         {
-            query = query.Where(p => p.Category.Suppliers.Any(s => s.SupplierId == supplierId.Value));
+            var filtered = await query
+                .Where(p => p.Category.Suppliers.Any(s => s.SupplierId == supplierId.Value))
+                .ToListAsync();
+            if (filtered.Count > 0)
+            {
+                return filtered;
+            }
         }
 
         return await query.ToListAsync();
