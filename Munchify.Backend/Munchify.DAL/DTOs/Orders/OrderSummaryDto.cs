@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Munchify.DAL.DTOs.Orders;
 
@@ -19,4 +20,5 @@ public class OrderSummaryDto
     public string? StaffName { get; set; }
     public DateTime CreatedAt { get; set; }
     public int ItemCount { get; set; }
+    public List<OrderDetailDto> OrderDetails { get; set; } = new();
 }

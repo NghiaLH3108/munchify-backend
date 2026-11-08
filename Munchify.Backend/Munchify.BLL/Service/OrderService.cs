@@ -382,6 +382,15 @@ public class OrderService : IOrderService
             StaffName     = o.Staff?.FullName,
             CreatedAt     = o.CreatedAt,
             ItemCount     = o.OrderDetails.Count,
+            OrderDetails  = o.OrderDetails.Select(d => new OrderDetailDto
+            {
+                ProductName    = d.ProductName,
+                UnitName       = d.UnitName,
+                UnitPrice      = d.UnitPrice,
+                Quantity       = d.Quantity,
+                DiscountAmount = d.DiscountAmount,
+                TotalAmount    = d.TotalAmount,
+            }).ToList(),
         }).ToList();
 
         return ApiResponse<PagedResult<OrderSummaryDto>>.SuccessResult(new PagedResult<OrderSummaryDto>
