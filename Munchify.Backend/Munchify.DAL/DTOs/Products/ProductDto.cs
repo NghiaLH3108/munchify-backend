@@ -15,5 +15,6 @@ public class ProductDto
     public string UnitName { get; set; } = null!;
     public string? ImageUrl { get; set; }
     public bool IsCombo { get; set; }
+    public int MinStockLevel { get; set; }
     public bool IsActive { get; set; }
 }

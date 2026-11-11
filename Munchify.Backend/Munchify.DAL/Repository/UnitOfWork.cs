@@ -12,15 +12,27 @@ public class UnitOfWork : IUnitOfWork
     private readonly MunchifyDbContext _context;
     
     public ICategoryRepository Categories { get; private set; }
+    public IUnitRepository Units { get; private set; }
     public IStockMovementRepository StockMovements { get; private set; }
     public IProductRepository Products { get; private set; }
+    public IDamagedExpiredRecordRepository DamagedExpiredRecords { get; private set; }
+    public IStockImportRepository StockImports { get; private set; }
+    public ISupplierRepository Suppliers { get; private set; }
+    public IOrderRepository Orders { get; private set; }
+    public IPromotionRepository Promotions { get; private set; }
 
     public UnitOfWork(MunchifyDbContext context)
     {
         _context = context;
         Categories = new CategoryRepository(_context);
+        Units = new UnitRepository(_context);
         StockMovements = new StockMovementRepository(_context);
         Products = new ProductRepository(_context);
+        DamagedExpiredRecords = new DamagedExpiredRecordRepository(_context);
+        StockImports = new StockImportRepository(_context);
+        Suppliers = new SupplierRepository(_context);
+        Orders = new OrderRepository(_context);
+        Promotions = new PromotionRepository(_context);
     }
 
     public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)

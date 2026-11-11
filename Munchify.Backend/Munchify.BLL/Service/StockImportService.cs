@@ -35,21 +35,26 @@ namespace Munchify.BLL.Service
 
             try
             {
-                // Generate a unique ImportCode
-                string importCode = $"IMP{DateTime.Now:yyyyMMddHHmmss}";
+                await _stockImportRepository.EnsureSchemaAsync();
 
-                var newImport = new StockImport
+                var supplier = await _unitOfWork.Suppliers.GetByIdAsync(request.SupplierId);
+                if (supplier == null)
                 {
-                    ImportCode = importCode,
-                    SupplierId = request.SupplierId,
-                    UserId = userId,
-                    Status = "DRAFT", // defined in Enums/StockImportStatus.cs
-                    ImportDate = DateTime.Now,
-                    Notes = request.Notes,
-                    StockImportDetails = new List<StockImportDetail>()
-                };
+                    response.Success = false;
+                    response.Message = $"Không tìm thấy nhà cung cấp (ID: {request.SupplierId}).";
+                    return response;
+                }
+
+                var validUserId = await _stockImportRepository.ResolveValidUserIdAsync(userId);
+                if (validUserId <= 0)
+                {
+                    response.Success = false;
+                    response.Message = "Không tìm thấy tài khoản người dùng hợp lệ để tạo phiếu nhập.";
+                    return response;
+                }
 
                 decimal totalAmount = 0;
+                var detailsToAdd = new List<StockImportDetail>();
 
                 foreach (var item in request.Items)
                 {
@@ -57,23 +62,37 @@ namespace Munchify.BLL.Service
                     if (product == null || !product.IsActive)
                     {
                         response.Success = false;
-                        response.Message = $"Product with ID {item.ProductId} not found or inactive.";
+                        response.Message = $"Sản phẩm ID {item.ProductId} không tồn tại hoặc đã ngừng kinh doanh.";
                         return response;
                     }
 
                     var detailTotalAmount = item.Quantity * item.ImportPrice;
                     totalAmount += detailTotalAmount;
 
-                    newImport.StockImportDetails.Add(new StockImportDetail
+                    detailsToAdd.Add(new StockImportDetail
                     {
                         ProductId = item.ProductId,
                         Quantity = item.Quantity,
                         ImportPrice = item.ImportPrice,
-                        TotalAmount = detailTotalAmount
+                        TotalAmount = detailTotalAmount,
+                        ExpiryDate = item.ExpiryDate
                     });
                 }
 
-                newImport.TotalAmount = totalAmount;
+                // Generate a unique ImportCode (max length 30 in DB)
+                string importCode = $"IMP{DateTime.Now:yyyyMMddHHmmssfff}";
+
+                var newImport = new StockImport
+                {
+                    ImportCode = importCode,
+                    SupplierId = request.SupplierId,
+                    UserId = validUserId,
+                    Status = "DRAFT", // defined in Enums/StockImportStatus.cs
+                    ImportDate = DateTime.Now,
+                    Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                    TotalAmount = totalAmount,
+                    StockImportDetails = detailsToAdd
+                };
 
                 await _stockImportRepository.AddAsync(newImport);
                 await _unitOfWork.CompleteAsync();
@@ -84,9 +103,10 @@ namespace Munchify.BLL.Service
             }
             catch (Exception ex)
             {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
                 response.Success = false;
-                response.Message = "Error occurred while creating stock import.";
-                response.Errors = new List<string> { ex.Message };
+                response.Message = $"Lỗi khi tạo phiếu nhập kho: {detailedError}";
+                response.Errors = new List<string> { detailedError };
             }
 
             return response;
@@ -97,6 +117,8 @@ namespace Munchify.BLL.Service
             var response = new ApiResponse<IEnumerable<StockImportDto>>();
             try
             {
+                await _stockImportRepository.EnsureSchemaAsync();
+
                 var imports = await _stockImportRepository.GetAllWithDetailsAsync();
                 var importDtos = imports.Select(i => new StockImportDto
                 {
@@ -126,9 +148,10 @@ namespace Munchify.BLL.Service
             }
             catch (Exception ex)
             {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
                 response.Success = false;
                 response.Message = "Error occurred while fetching stock imports.";
-                response.Errors = new List<string> { ex.Message };
+                response.Errors = new List<string> { detailedError };
             }
             return response;
         }
@@ -138,6 +161,8 @@ namespace Munchify.BLL.Service
             var response = new ApiResponse<StockImportDto>();
             try
             {
+                await _stockImportRepository.EnsureSchemaAsync();
+
                 var import = await _stockImportRepository.GetByIdWithDetailsAsync(id);
                 if (import == null)
                 {
@@ -174,12 +199,14 @@ namespace Munchify.BLL.Service
             }
             catch (Exception ex)
             {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
                 response.Success = false;
                 response.Message = "Error occurred while fetching stock import details.";
-                response.Errors = new List<string> { ex.Message };
+                response.Errors = new List<string> { detailedError };
             }
             return response;
         }
+
         public async Task<ApiResponse<bool>> CancelImportAsync(int id)
         {
             var response = new ApiResponse<bool>();
@@ -210,9 +237,10 @@ namespace Munchify.BLL.Service
             }
             catch (Exception ex)
             {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
                 response.Success = false;
                 response.Message = "Error occurred while cancelling stock import.";
-                response.Errors = new List<string> { ex.Message };
+                response.Errors = new List<string> { detailedError };
             }
             return response;
         }
@@ -222,6 +250,8 @@ namespace Munchify.BLL.Service
             var response = new ApiResponse<bool>();
             try
             {
+                await _stockImportRepository.EnsureSchemaAsync();
+
                 var import = await _stockImportRepository.GetByIdWithDetailsAsync(id);
                 if (import == null)
                 {
@@ -236,6 +266,8 @@ namespace Munchify.BLL.Service
                     response.Message = "Only DRAFT imports can be completed.";
                     return response;
                 }
+
+                var validUserId = await _stockImportRepository.ResolveValidUserIdAsync(userId > 0 ? userId : import.UserId);
 
                 using var transaction = await _unitOfWork.BeginTransactionAsync();
                 
@@ -260,7 +292,7 @@ namespace Munchify.BLL.Service
                             var movement = new StockMovement
                             {
                                 ProductId = product.ProductId,
-                                UserId = userId,
+                                UserId = validUserId,
                                 MovementType = "IMPORT",
                                 Quantity = detail.Quantity,
                                 PreviousQuantity = prevQty,
@@ -291,9 +323,10 @@ namespace Munchify.BLL.Service
             }
             catch (Exception ex)
             {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
                 response.Success = false;
                 response.Message = "Error occurred while completing stock import.";
-                response.Errors = new List<string> { ex.Message };
+                response.Errors = new List<string> { detailedError };
             }
             return response;
         }

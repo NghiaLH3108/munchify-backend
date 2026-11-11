@@ -1,0 +1,332 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Munchify.BLL.Service.Interfaces;
+using Munchify.DAL.Data;
+using Munchify.DAL.DTOs.Common;
+using Munchify.DAL.DTOs.Inventory;
+using Munchify.DAL.Entities;
+using Munchify.DAL.Repository.Interfaces;
+
+namespace Munchify.BLL.Service
+{
+    public class DamagedExpiredService : IDamagedExpiredService
+    {
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IEmailService _emailService;
+        private readonly Munchify.DAL.Repository.Interfaces.IUserRepository _userRepository;
+        private readonly IInventoryAiService _aiService;
+
+        public DamagedExpiredService(
+            IUnitOfWork unitOfWork, 
+            IEmailService emailService,
+            Munchify.DAL.Repository.Interfaces.IUserRepository userRepository,
+            IInventoryAiService aiService)
+        {
+            _unitOfWork = unitOfWork;
+            _emailService = emailService;
+            _userRepository = userRepository;
+            _aiService = aiService;
+        }
+
+        public async Task<ApiResponse<IEnumerable<DamagedExpiredRecordDto>>> GetPendingRecordsAsync(string? status = null)
+        {
+            var response = new ApiResponse<IEnumerable<DamagedExpiredRecordDto>>();
+            try
+            {
+                var records = await _unitOfWork.DamagedExpiredRecords.GetPendingRecordsWithDetailsAsync(status);
+                
+                var dtos = records.Select(r => new DamagedExpiredRecordDto
+                {
+                    RecordId = r.RecordId,
+                    ImportDetailId = r.ImportDetailId,
+                    BatchCode = r.ImportDetail?.Import?.ImportCode ?? (r.ImportDetailId != null ? $"IMP-{r.ImportDetailId:D4}" : $"RECORD-{r.RecordId:D4}"),
+                    ExpiryDate = r.ImportDetail?.ExpiryDate,
+                    ProductId = r.ProductId,
+                    ProductName = r.Product?.ProductName ?? "Unknown",
+                    UnitName = r.Product?.Unit?.UnitName ?? "Unknown",
+                    Quantity = r.Quantity,
+                    ReportType = r.ReportType,
+                    Status = r.Status,
+                    Reason = r.Reason,
+                    AiAnalysis = r.AiAnalysis,
+                    CreatedAt = r.CreatedAt,
+                    ProcessedAt = r.ProcessedAt
+                }).ToList();
+
+                response.Success = true;
+                response.Data = dtos;
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi tải danh sách cảnh báo.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<AiExpirySummaryDto>> GetSummaryMetricsAsync()
+        {
+            var response = new ApiResponse<AiExpirySummaryDto>();
+            try
+            {
+                var summary = await _unitOfWork.DamagedExpiredRecords.GetSummaryMetricsAsync();
+                response.Success = true;
+                response.Data = summary;
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi tính toán metrics.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<bool>> ApproveRecordAsync(int recordId, int userId)
+        {
+            var response = new ApiResponse<bool>();
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var record = await _unitOfWork.DamagedExpiredRecords.GetByIdAsync(recordId);
+                if (record == null || record.Status != "PENDING")
+                {
+                    response.Success = false;
+                    response.Message = "Không tìm thấy record hoặc trạng thái không hợp lệ.";
+                    return response;
+                }
+
+                var product = await _unitOfWork.Products.GetByIdAsync(record.ProductId);
+                if (product != null)
+                {
+                    int prevQty = product.StockQuantity;
+                    int newQty = Math.Max(0, prevQty - record.Quantity);
+                    int deduction = prevQty - newQty;
+
+                    if (deduction > 0)
+                    {
+                        product.StockQuantity = newQty;
+                        _unitOfWork.Products.Update(product);
+
+                        var movement = new StockMovement
+                        {
+                            ProductId = product.ProductId,
+                            UserId = userId,
+                            MovementType = "DAMAGE",
+                            Quantity = -deduction,
+                            PreviousQuantity = prevQty,
+                            NewQuantity = newQty,
+                            ReferenceType = "MANUAL",
+                            ReferenceId = record.ImportDetailId,
+                            Reason = $"Hủy hàng cận/hết hạn. Theo record ID: {record.RecordId}",
+                            CreatedAt = DateTime.Now
+                        };
+                        await _unitOfWork.StockMovements.AddAsync(movement);
+                    }
+                }
+
+                record.Status = "APPROVED";
+                record.ProcessedAt = DateTime.Now;
+                _unitOfWork.DamagedExpiredRecords.Update(record);
+
+                await _unitOfWork.CompleteAsync();
+                await transaction.CommitAsync();
+
+                response.Success = true;
+                response.Data = true;
+                response.Message = "Đã duyệt và trừ kho thành công.";
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                response.Success = false;
+                response.Message = "Lỗi khi duyệt.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<bool>> RejectRecordAsync(int recordId, int userId)
+        {
+            var response = new ApiResponse<bool>();
+            try
+            {
+                var record = await _unitOfWork.DamagedExpiredRecords.GetByIdAsync(recordId);
+                if (record == null || record.Status != "PENDING")
+                {
+                    response.Success = false;
+                    response.Message = "Không tìm thấy record hoặc trạng thái không hợp lệ.";
+                    return response;
+                }
+
+                record.Status = "REJECTED";
+                record.ProcessedAt = DateTime.Now;
+                _unitOfWork.DamagedExpiredRecords.Update(record);
+                await _unitOfWork.CompleteAsync();
+
+                response.Success = true;
+                response.Data = true;
+                response.Message = "Đã từ chối.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi từ chối.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<DamagedExpiredRecordDto>> CreateStaffReportAsync(StaffReportDamagedExpiredRequest request, int userId)
+        {
+            var response = new ApiResponse<DamagedExpiredRecordDto>();
+            try
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(request.ProductId);
+                if (product == null)
+                {
+                    response.Success = false;
+                    response.Message = "Sản phẩm không tồn tại.";
+                    return response;
+                }
+
+                if (request.Quantity <= 0)
+                {
+                    response.Success = false;
+                    response.Message = "Số lượng báo cáo phải lớn hơn 0.";
+                    return response;
+                }
+
+                if (request.Quantity > product.StockQuantity)
+                {
+                    response.Success = false;
+                    response.Message = $"Số lượng báo cáo ({request.Quantity}) không được vượt quá số lượng tồn kho ({product.StockQuantity}).";
+                    return response;
+                }
+
+                var record = new DamagedExpiredRecord
+                {
+                    ProductId = request.ProductId,
+                    ImportDetailId = null,
+                    Quantity = request.Quantity,
+                    ReportType = request.ReportType.ToUpper(),
+                    Status = "PENDING",
+                    Reason = request.Reason,
+                    AiAnalysis = null,
+                    CreatedAt = DateTime.Now
+                };
+
+                await _unitOfWork.DamagedExpiredRecords.AddAsync(record);
+                await _unitOfWork.CompleteAsync();
+
+                var unit = product.UnitId > 0 ? await _unitOfWork.Units.GetByIdAsync(product.UnitId) : null;
+                var reporter = userId > 0 ? await _userRepository.GetByIdAsync(userId) : null;
+                string reporterName = reporter?.FullName ?? "Nhân viên POS";
+
+                // Tự động kích hoạt gửi Email cảnh báo cho Admin
+                await _emailService.SendDamagedExpiredAlertAsync(
+                    productName: product.ProductName,
+                    productCode: product.ProductCode,
+                    quantity: record.Quantity,
+                    unitName: unit?.UnitName ?? "Món",
+                    reportType: record.ReportType,
+                    reason: record.Reason ?? "Không có lý do chi tiết",
+                    reporterName: reporterName
+                );
+
+                var dto = new DamagedExpiredRecordDto
+                {
+                    RecordId = record.RecordId,
+                    ImportDetailId = record.ImportDetailId,
+                    BatchCode = $"MANUAL-{record.CreatedAt:yyyyMMdd}-{record.RecordId:D3}",
+                    ExpiryDate = null,
+                    ProductId = product.ProductId,
+                    ProductName = product.ProductName,
+                    UnitName = unit?.UnitName ?? "Món",
+                    Quantity = record.Quantity,
+                    ReportType = record.ReportType,
+                    Status = record.Status,
+                    Reason = record.Reason,
+                    AiAnalysis = record.AiAnalysis,
+                    CreatedAt = record.CreatedAt
+                };
+
+                response.Success = true;
+                response.Data = dto;
+                response.Message = "Báo cáo sự cố hàng hóa đã được gửi thành công, đang chờ quản lý phê duyệt.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi gửi báo cáo hàng hư hỏng/hết hạn.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+
+        public async Task<ApiResponse<DamagedExpiredRecordDto>> AnalyzeRecordAsync(int recordId)
+        {
+            var response = new ApiResponse<DamagedExpiredRecordDto>();
+            try
+            {
+                var record = await _unitOfWork.DamagedExpiredRecords.GetRecordWithDetailsAsync(recordId);
+                if (record == null)
+                {
+                    response.Success = false;
+                    response.Message = "Không tìm thấy thông tin lô hàng cần phân tích.";
+                    return response;
+                }
+
+                string productName = record.Product?.ProductName ?? "Sản phẩm";
+                string unitName = record.Product?.Unit?.UnitName ?? "Món";
+                DateTime? expiryDate = record.ImportDetail?.ExpiryDate;
+
+                string aiResult = await _aiService.AnalyzeRecordAsync(
+                    productName: productName,
+                    qty: record.Quantity,
+                    unitName: unitName,
+                    reportType: record.ReportType,
+                    reason: record.Reason,
+                    expiryDate: expiryDate
+                );
+
+                record.AiAnalysis = aiResult;
+                _unitOfWork.DamagedExpiredRecords.Update(record);
+                await _unitOfWork.CompleteAsync();
+
+                var dto = new DamagedExpiredRecordDto
+                {
+                    RecordId = record.RecordId,
+                    ImportDetailId = record.ImportDetailId,
+                    BatchCode = record.ImportDetail?.Import?.ImportCode ?? (record.ImportDetailId != null ? $"IMP-{record.ImportDetailId:D4}" : $"RECORD-{record.RecordId:D4}"),
+                    ExpiryDate = record.ImportDetail?.ExpiryDate,
+                    ProductId = record.ProductId,
+                    ProductName = record.Product?.ProductName ?? "Unknown",
+                    UnitName = record.Product?.Unit?.UnitName ?? "Unknown",
+                    Quantity = record.Quantity,
+                    ReportType = record.ReportType,
+                    Status = record.Status,
+                    Reason = record.Reason,
+                    AiAnalysis = record.AiAnalysis,
+                    CreatedAt = record.CreatedAt,
+                    ProcessedAt = record.ProcessedAt
+                };
+
+                response.Success = true;
+                response.Data = dto;
+                response.Message = "Phân tích AI hoàn tất.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Lỗi khi gọi AI phân tích.";
+                response.Errors = new List<string> { ex.Message };
+            }
+            return response;
+        }
+    }
+}

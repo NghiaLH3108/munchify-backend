@@ -12,6 +12,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -24,7 +25,7 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<ProductDto>>>> GetProducts([FromQuery] ProductFilterParams filter)
     {
-        var response = await _productService.GetProductsForStaffAsync(filter);
+        var response = await _productService.GetProductsAsync(filter);
         if (!response.Success)
             return BadRequest(response);
             
@@ -45,6 +46,53 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetProductsForStock([FromQuery] int? supplierId)
     {
         var response = await _productService.GetProductsForStockAsync(supplierId);
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<ProductDetailDto>>> CreateProduct([FromBody] ProductRequest request)
+    {
+        var response = await _productService.CreateProductAsync(request);
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse<ProductDetailDto>>> UpdateProduct(int id, [FromBody] ProductRequest request)
+    {
+        var response = await _productService.UpdateProductAsync(id, request);
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+    [HttpPatch("{id}/status")]
+    public async Task<ActionResult<ApiResponse<bool>>> ToggleProductStatus(int id)
+    {
+        var response = await _productService.ToggleProductStatusAsync(id);
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ combo kèm thành phần (components) cho Staff POS.
+    /// Dùng để tính toán SavingAmount và kiểm tra tình trạng tồn kho combo.
+    /// </summary>
+    [HttpGet("combos")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<ProductDetailDto>>>> GetCombos(CancellationToken cancellationToken)
+    {
+        var response = await _productService.GetCombosForStaffAsync(cancellationToken);
         if (!response.Success)
             return BadRequest(response);
 

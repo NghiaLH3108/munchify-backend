@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Categories;
@@ -8,6 +9,7 @@ namespace Munchify.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -41,6 +43,7 @@ public class CategoriesController : ControllerBase
         return Ok(response);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategory([FromBody] SaveCategoryRequest request)
     {
@@ -54,6 +57,7 @@ public class CategoriesController : ControllerBase
         return CreatedAtAction(nameof(GetCategory), new { id = response.Data?.CategoryId }, response);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<CategoryDto>>> UpdateCategory(int id, [FromBody] SaveCategoryRequest request)
     {
@@ -67,6 +71,7 @@ public class CategoriesController : ControllerBase
         return Ok(response);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("{id}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteCategory(int id)
     {

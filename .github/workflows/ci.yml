@@ -1,0 +1,35 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  backend-ci:
+    name: Build & Test Backend (.NET 8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Munchify.Backend
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore Munchify.Backend.sln
+      
+    - name: Build
+      run: dotnet build Munchify.Backend.sln -c Release --no-restore
+      
+    # Uncomment when tests are added to backend
+    # - name: Test
+    #   run: dotnet test Munchify.Backend.sln -c Release --no-build --verbosity normal
+
+  

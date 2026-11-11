@@ -9,7 +9,7 @@ namespace Munchify.API.Controllers
 {
     [Route("api/stock-imports")]
     [ApiController]
-    // [Authorize] // Tạm thời comment dòng này lại để test không cần Token
+    [Authorize(Roles = AppRoles.AdminOrStaff)]
     public class StockImportsController : ControllerBase
     {
         private readonly IStockImportService _stockImportService;
@@ -25,8 +25,7 @@ namespace Munchify.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // In a real app, retrieve UserId from JWT claims. Assuming user ID 1 (Admin) for now.
-            int userId = 1; 
+            int userId = User.GetUserId() ?? 0;
 
             var result = await _stockImportService.CreateDraftImportAsync(request, userId);
             
@@ -71,11 +70,10 @@ namespace Munchify.API.Controllers
         }
 
         [HttpPut("{id}/complete")]
-        // [Authorize(Roles = "ADMIN")] // In a real app, restrict this to Admin
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<ActionResult<ApiResponse<bool>>> CompleteImport(int id)
         {
-            // Assuming Admin UserId = 1
-            int userId = 1;
+            int userId = User.GetUserId() ?? 0;
 
             var result = await _stockImportService.CompleteImportAsync(id, userId);
             if (!result.Success)

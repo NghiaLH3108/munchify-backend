@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Munchify.DAL.Entities;
@@ -16,6 +16,8 @@ public partial class StockImportDetail
     public decimal ImportPrice { get; set; }
 
     public decimal TotalAmount { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
 
     public virtual StockImport Import { get; set; } = null!;
 

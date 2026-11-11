@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Munchify.BLL.Service.Interfaces;
 using Munchify.DAL.DTOs.Common;
 using Munchify.DAL.DTOs.Products;
@@ -13,18 +14,83 @@ public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IProductRepository _productRepository;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ProductService(IUnitOfWork unitOfWork, IProductRepository productRepository)
+    public ProductService(
+        IUnitOfWork unitOfWork, 
+        IProductRepository productRepository,
+        IHttpContextAccessor httpContextAccessor)
     {
         _unitOfWork = unitOfWork;
         _productRepository = productRepository;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<ApiResponse<PagedResult<ProductDto>>> GetProductsForStaffAsync(ProductFilterParams filter)
+    private string? ResolveImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return imageUrl;
+
+        if (imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+            imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            var req = _httpContextAccessor.HttpContext?.Request;
+            if (req != null && Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) &&
+                (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Host, "10.0.2.2", StringComparison.OrdinalIgnoreCase)))
+            {
+                return $"{req.Scheme}://{req.Host}{req.PathBase}{uri.PathAndQuery}";
+            }
+            return imageUrl;
+        }
+
+        var request = _httpContextAccessor.HttpContext?.Request;
+        if (request == null)
+            return imageUrl;
+
+        var path = imageUrl.StartsWith("/") ? imageUrl : $"/{imageUrl}";
+        return $"{request.Scheme}://{request.Host}{request.PathBase}{path}";
+    }
+
+    public async Task<ApiResponse<PagedResult<ProductDto>>> GetProductsAsync(ProductFilterParams filter)
     {
         try
         {
-            var (items, totalCount) = await _productRepository.GetProductsAsync(filter);
+            var query = _productRepository.GetProductsQuery();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                var searchTerm = filter.SearchTerm.Trim().ToLower();
+                query = query.Where(p => p.ProductName.ToLower().Contains(searchTerm) || 
+                                         p.ProductCode.ToLower().Contains(searchTerm));
+            }
+
+            if (filter.CategoryId.HasValue)
+            {
+                query = query.Where(p => p.CategoryId == filter.CategoryId.Value);
+            }
+
+            if (filter.UnitId.HasValue)
+            {
+                query = query.Where(p => p.UnitId == filter.UnitId.Value);
+            }
+
+            var isCombo = filter.IsCombo ?? false;
+            query = query.Where(p => p.IsCombo == isCombo);
+
+            if (filter.IsActive.HasValue)
+            {
+                query = query.Where(p => p.IsActive == filter.IsActive.Value);
+            }
+
+            var totalCount = query.Count();
+
+            var items = query
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToList();
 
             var productDtos = items.Select(p => new ProductDto
             {
@@ -37,8 +103,9 @@ public class ProductService : IProductService
                 CategoryName = p.Category?.CategoryName ?? string.Empty,
                 UnitId = p.UnitId,
                 UnitName = p.Unit?.UnitName ?? string.Empty,
-                ImageUrl = p.ImageUrl,
+                ImageUrl = ResolveImageUrl(p.ImageUrl),
                 IsCombo = p.IsCombo,
+                MinStockLevel = p.MinStockLevel,
                 IsActive = p.IsActive
             }).ToList();
 
@@ -69,33 +136,7 @@ public class ProductService : IProductService
                 return ApiResponse<ProductDetailDto>.ErrorResult("Không tìm thấy sản phẩm");
             }
 
-            var detailDto = new ProductDetailDto
-            {
-                ProductId = product.ProductId,
-                ProductCode = product.ProductCode,
-                ProductName = product.ProductName,
-                Price = product.Price,
-                StockQuantity = product.StockQuantity,
-                CategoryId = product.CategoryId,
-                CategoryName = product.Category?.CategoryName ?? string.Empty,
-                UnitId = product.UnitId,
-                UnitName = product.Unit?.UnitName ?? string.Empty,
-                ImageUrl = product.ImageUrl,
-                IsCombo = product.IsCombo,
-                IsActive = product.IsActive,
-                Description = product.Description,
-                MinStockLevel = product.MinStockLevel,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
-                ComboItems = product.ProductComboParentProducts.Select(pc => new ComboItemDto
-                {
-                    ComponentProductId = pc.ComponentProductId,
-                    ComponentProductName = pc.ComponentProduct?.ProductName ?? string.Empty,
-                    Quantity = pc.Quantity,
-                    UnitPrice = pc.ComponentProduct?.Price ?? 0,
-                    UnitName = pc.ComponentProduct?.Unit?.UnitName ?? string.Empty
-                }).ToList()
-            };
+            var detailDto = MapToProductDetailDto(product);
 
             return ApiResponse<ProductDetailDto>.SuccessResult(detailDto);
         }
@@ -104,6 +145,56 @@ public class ProductService : IProductService
             return ApiResponse<ProductDetailDto>.ErrorResult($"Lỗi khi lấy chi tiết sản phẩm: {ex.Message}");
         }
     }
+
+    public async Task<ApiResponse<IEnumerable<ProductDetailDto>>> GetCombosForStaffAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var combos = await _productRepository.GetCombosWithComponentsAsync(cancellationToken);
+
+            var comboDtos = combos.Select(MapToProductDetailDto).ToList();
+
+            return ApiResponse<IEnumerable<ProductDetailDto>>.SuccessResult(comboDtos);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<IEnumerable<ProductDetailDto>>.ErrorResult($"Lỗi khi lấy danh sách combo: {ex.Message}");
+        }
+    }
+
+    private ProductDetailDto MapToProductDetailDto(Munchify.DAL.Entities.Product p) => new ProductDetailDto
+    {
+        ProductId = p.ProductId,
+        ProductCode = p.ProductCode,
+        ProductName = p.ProductName,
+        Price = p.Price,
+        StockQuantity = p.StockQuantity,
+        CategoryId = p.CategoryId,
+        CategoryName = p.Category?.CategoryName ?? string.Empty,
+        UnitId = p.UnitId,
+        UnitName = p.Unit?.UnitName ?? string.Empty,
+        ImageUrl = ResolveImageUrl(p.ImageUrl),
+        IsCombo = p.IsCombo,
+        IsActive = p.IsActive,
+        Description = p.Description,
+        MinStockLevel = p.MinStockLevel,
+        CreatedAt = p.CreatedAt,
+        UpdatedAt = p.UpdatedAt,
+        ComboItems = p.ProductComboParentProducts.Select(pc => new ComboItemDto
+        {
+            ComponentProductId = pc.ComponentProductId,
+            ComponentProductName = pc.ComponentProduct?.ProductName ?? string.Empty,
+            Quantity = pc.Quantity,
+            UnitPrice = pc.ComponentProduct?.Price ?? 0,
+            UnitName = pc.ComponentProduct?.Unit?.UnitName ?? string.Empty,
+            ComponentStockQuantity = pc.ComponentProduct?.StockQuantity ?? 0
+        }).ToList()
+    };
+
     public async Task<ApiResponse<IEnumerable<ProductForStockDto>>> GetProductsForStockAsync(int? supplierId)
     {
         try
@@ -124,6 +215,128 @@ public class ProductService : IProductService
         catch (Exception ex)
         {
             return ApiResponse<IEnumerable<ProductForStockDto>>.ErrorResult($"Lỗi khi lấy danh sách sản phẩm theo nhà cung cấp: {ex.Message}");
+        }
+    }
+    public async Task<ApiResponse<ProductDetailDto>> CreateProductAsync(ProductRequest request)
+    {
+        try
+        {
+            var product = new Munchify.DAL.Entities.Product
+            {
+                ProductCode = string.IsNullOrWhiteSpace(request.ProductCode) ? $"SP{DateTime.Now.Ticks.ToString().Substring(10)}" : request.ProductCode,
+                ProductName = request.ProductName,
+                CategoryId = request.CategoryId,
+                UnitId = request.UnitId,
+                Description = request.Description,
+                Price = request.Price,
+                MinStockLevel = request.MinStockLevel,
+                ImageUrl = request.ImageUrl,
+                IsCombo = request.IsCombo,
+                IsActive = request.IsActive,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                StockQuantity = 0
+            };
+
+            if (request.IsCombo && request.ComboItems != null)
+            {
+                foreach (var item in request.ComboItems)
+                {
+                    product.ProductComboParentProducts.Add(new Munchify.DAL.Entities.ProductCombo
+                    {
+                        ComponentProductId = item.ComponentProductId,
+                        Quantity = item.Quantity
+                    });
+                }
+            }
+
+            await _productRepository.AddAsync(product);
+            await _unitOfWork.CompleteAsync();
+
+            return await GetProductDetailAsync(product.ProductId);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ProductDetailDto>.ErrorResult($"Lỗi khi tạo sản phẩm: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<ProductDetailDto>> UpdateProductAsync(int id, ProductRequest request)
+    {
+        try
+        {
+            var product = await _productRepository.GetProductByIdWithDetailsAsync(id);
+            if (product == null)
+            {
+                return ApiResponse<ProductDetailDto>.ErrorResult("Không tìm thấy sản phẩm");
+            }
+
+            product.ProductName = request.ProductName;
+            product.CategoryId = request.CategoryId;
+            product.UnitId = request.UnitId;
+            if (!string.IsNullOrWhiteSpace(request.ProductCode))
+                product.ProductCode = request.ProductCode;
+            product.Description = request.Description;
+            product.Price = request.Price;
+            product.MinStockLevel = request.MinStockLevel;
+            product.ImageUrl = request.ImageUrl;
+            product.IsCombo = request.IsCombo;
+            product.IsActive = request.IsActive;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            if (request.IsCombo)
+            {
+                product.ProductComboParentProducts.Clear();
+                if (request.ComboItems != null)
+                {
+                    foreach (var item in request.ComboItems)
+                    {
+                        product.ProductComboParentProducts.Add(new Munchify.DAL.Entities.ProductCombo
+                        {
+                            ParentProductId = product.ProductId,
+                            ComponentProductId = item.ComponentProductId,
+                            Quantity = item.Quantity
+                        });
+                    }
+                }
+            }
+            else
+            {
+                product.ProductComboParentProducts.Clear();
+            }
+
+            _productRepository.Update(product);
+            await _unitOfWork.CompleteAsync();
+
+            return await GetProductDetailAsync(product.ProductId);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ProductDetailDto>.ErrorResult($"Lỗi khi cập nhật sản phẩm: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<bool>> ToggleProductStatusAsync(int id)
+    {
+        try
+        {
+            var product = await _productRepository.GetByIdAsync(id);
+            if (product == null)
+            {
+                return ApiResponse<bool>.ErrorResult("Không tìm thấy sản phẩm");
+            }
+
+            product.IsActive = !product.IsActive;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            _productRepository.Update(product);
+            await _unitOfWork.CompleteAsync();
+
+            return ApiResponse<bool>.SuccessResult(product.IsActive, "Cập nhật trạng thái thành công");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResult($"Lỗi khi cập nhật trạng thái: {ex.Message}");
         }
     }
 }
